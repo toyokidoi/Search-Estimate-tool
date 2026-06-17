@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>検索・概算ツール — レビュー版</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eef1f5; --surface:#fff; --surface-2:#f6f8fb;
+  --ink:#16202c; --ink-2:#48566a; --muted:#8896a8;
+  --line:#e2e8f0; --line-2:#eef2f6;
+  --blue:#1668c4; --blue-deep:#0f4c8f; --blue-soft:#e7f0fb;
+  --teal:#0f9b8e; --teal-soft:#e2f5f2;
+  --green:#2f9461; --green-soft:#e6f5ec; --red:#cc3b46; --red-soft:#fbe9eb;
+  --input-bg:#fffdf3; --input-line:#e6dfae;
+  --shadow:0 1px 2px rgba(16,32,48,.04),0 4px 16px rgba(16,32,48,.06);
+  --cat-arch:#1668c4;--cat-elec:#d98a1f;--cat-hvac:#0f9b8e;--cat-plumb:#6a5acd;--cat-fire:#d6536d;--cat-lift:#3a7bd5;--cat-other:#8896a8;
+}
+body{font-family:'Zen Kaku Gothic New',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums}
+
+.app{display:flex;min-height:100vh}
+.sidebar{width:216px;background:#0f1b2d;color:#cfd8e3;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:22px 22px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand h1{font-size:15px;font-weight:700;color:#fff}
+.brand .sub{font-size:11px;color:#7d8ba0;margin-top:3px}
+.nav{padding:14px 12px;flex:1}
+.nav button{width:100%;border:0;background:transparent;color:#b9c4d2;text-align:left;padding:11px 14px;border-radius:9px;font-size:13.5px;font-family:inherit;cursor:pointer;margin-bottom:3px;transition:.15s}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button.active{background:linear-gradient(100deg,var(--blue),var(--blue-deep));color:#fff}
+.sidebar .foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#6c7a8e}
+
+.main{flex:1;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);height:60px;display:flex;align-items:center;padding:0 28px;position:sticky;top:0;z-index:20}
+.topbar h2{font-size:16px;font-weight:700}
+.topbar .badge{margin-left:12px;font-size:10.5px;font-weight:600;background:var(--blue-soft);color:var(--blue-deep);padding:3px 9px;border-radius:20px}
+.content{padding:24px 28px 70px;max-width:1060px}
+.lead{font-size:13px;color:var(--muted);margin-bottom:18px}
+.view{display:none}.view.active{display:block;animation:fade .2s}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.section{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.sec-head{padding:14px 20px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:10px}
+.sec-head .n{font-size:12.5px;font-weight:700;color:var(--blue-deep);background:var(--blue-soft);width:23px;height:23px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.sec-head h3{font-size:14.5px;font-weight:700}
+.sec-head .note{font-size:11.5px;color:var(--muted);margin-left:auto}
+.sec-body{padding:18px 20px}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 18px}
+.grid.c2{grid-template-columns:repeat(2,1fr)}
+.grid.c4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:820px){.grid,.grid.c2,.grid.c4{grid-template-columns:repeat(2,1fr)}}
+.fld{display:flex;flex-direction:column}.fld.span2{grid-column:span 2}
+.fld label{font-size:11.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.fld label .req{color:var(--red);font-size:10px;margin-left:5px;font-weight:700}
+.fld label .opt{color:var(--muted);font-size:10px;margin-left:5px;font-weight:400}
+.fld input,.fld select{font-family:inherit;font-size:13.5px;color:var(--ink);border:1px solid var(--input-line);border-radius:8px;padding:9px 11px;background:var(--input-bg);transition:.15s;width:100%}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px var(--blue-soft)}
+.fld.check{flex-direction:row;align-items:center;gap:8px;margin-top:4px}
+.fld.check input{width:auto}
+.fld .unit{position:relative}.fld .unit input{padding-right:42px}
+.fld .unit .u{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:11.5px;color:var(--muted)}
+
+.btn{font-family:inherit;font-size:13.5px;font-weight:600;border-radius:10px;padding:11px 22px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2);transition:.15s}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:linear-gradient(100deg,var(--blue),var(--blue-deep));color:#fff;border-color:transparent;box-shadow:0 3px 12px rgba(22,104,196,.3)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.sm{padding:8px 14px;font-size:12.5px}
+
+.applied{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.applied li{font-size:12px;background:var(--teal-soft);color:#0a6c63;border:1px solid #bfe6e1;border-radius:20px;padding:4px 12px}
+.hit-count{font-size:14px;font-weight:700;margin:4px 0 0}
+
+/* sliders */
+.sliders{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 26px}
+@media(max-width:820px){.sliders{grid-template-columns:1fr}}
+.slider{}
+.slider .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px}
+.slider .nm{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.slider .dot{width:9px;height:9px;border-radius:50%}
+.slider .val{font-family:'Spline Sans Mono',monospace;font-weight:600;font-size:14px}
+.slider .meta{font-size:10.5px;color:var(--muted)}
+.slider input[type=range]{width:100%;-webkit-appearance:none;height:6px;border-radius:5px;background:var(--line);outline:none;margin:8px 0 2px}
+.slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--blue);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.slider input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--blue);cursor:pointer}
+.slider .scale{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'Spline Sans Mono',monospace}
+.slider.disabled{opacity:.45}
+.slider.disabled input{pointer-events:none}
+.reset-median{cursor:pointer;border-bottom:1px dashed var(--muted);color:var(--ink-2);transition:.12s}
+.reset-median:hover{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* result cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
+@media(max-width:820px){.cards{grid-template-columns:repeat(2,1fr)}}
+.rc{background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;padding:12px 14px;border-left:3px solid var(--muted)}
+.rc .l{font-size:11px;color:var(--muted);font-weight:600}
+.rc .v{font-family:'Spline Sans Mono',monospace;font-weight:600;font-size:15px;margin-top:2px}
+.total-card{margin-top:14px;background:linear-gradient(100deg,var(--blue-soft),#eef5fd);border:1px solid #bcd6f5;border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.total-card .l{font-size:13px;font-weight:700;color:var(--blue-deep)}
+.total-card .v{font-family:'Spline Sans Mono',monospace;font-weight:700;font-size:26px;color:var(--blue-deep);letter-spacing:-.5px}
+
+/* chart */
+.chart-head{display:flex;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.chart-head select{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:7px 11px;background:#fff}
+.plot-wrap{position:relative;background:linear-gradient(180deg,#fafcff,#f2f6fc);border:1px solid var(--line-2);border-radius:12px;overflow:hidden}
+#plot{display:block;width:100%;height:auto}
+.tooltip{position:absolute;pointer-events:none;background:rgba(22,32,44,.96);color:#fff;font-size:11.5px;padding:7px 10px;border-radius:8px;opacity:0;transition:opacity .12s;white-space:nowrap;z-index:5}
+.tooltip b{font-family:'Spline Sans Mono',monospace}
+.legend{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:10px}
+.legend .item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.legend .mk{width:11px;height:11px;border-radius:50%}
+.legend .star{color:#e0492e;font-size:14px}
+
+.expander{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:8px}
+.exp-head{padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:8px;user-select:none}
+.exp-head:hover{background:var(--surface-2)}
+.exp-head .chev{margin-left:auto;transition:.2s}
+.expander.open .chev{transform:rotate(180deg)}
+.exp-body{display:none;padding:4px 16px 14px}
+.expander.open .exp-body{display:block}
+.hit-card{border:1px solid var(--line-2);border-radius:10px;padding:11px 14px;margin-bottom:8px}
+.hit-card .h{font-size:13px;font-weight:600}
+.hit-card .sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+.note{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:12px 16px;font-size:12px;color:var(--ink-2);margin-top:14px}
+.placeholder{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.dummy-pill{display:inline-block;font-size:10.5px;background:#fff4e0;color:#9a6a14;border:1px solid #f0dca8;border-radius:20px;padding:3px 10px;margin-bottom:14px}
+
+/* 概要フォーム（用途別出し分け・施工会社） */
+.usage-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.usage-tabs button{font-family:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink-2);padding:9px 18px;border-radius:9px;cursor:pointer;transition:.15s}
+.usage-tabs button:hover{border-color:#bcd0e8;background:var(--surface-2)}
+.usage-tabs button.active{background:linear-gradient(100deg,var(--blue),var(--blue-deep));color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(22,104,196,.28)}
+.dyn-block{display:none}.dyn-block.active{display:block;animation:fade .25s}
+.dyn-title{font-size:12.5px;font-weight:700;color:var(--teal);margin:6px 0 12px;display:flex;align-items:center;gap:8px}
+.dyn-title::before{content:"";width:4px;height:15px;background:var(--teal);border-radius:3px}
+.grade-help{background:var(--surface-2);border:1px solid var(--line-2);border-radius:9px;padding:11px 14px;font-size:11.5px;color:var(--ink-2);margin-top:12px}
+.grade-help b{color:var(--ink)}
+.grade-help table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px}
+.grade-help th,.grade-help td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line-2)}
+.grade-help th{color:var(--muted);font-weight:600}
+.contractors{display:grid;grid-template-columns:repeat(2,1fr);gap:13px 22px}
+@media(max-width:820px){.contractors{grid-template-columns:1fr}}
+.cgroup .cg-t{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line-2)}
+.crow{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:10px;margin-bottom:8px}
+.crow label{font-size:12.5px;color:var(--ink-2)}
+.crow .ac{position:relative}
+.crow input{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--input-line);border-radius:7px;padding:7px 10px;background:var(--input-bg)}
+.crow input:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px var(--blue-soft)}
+.suggest{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);z-index:30;overflow:hidden;display:none}
+.suggest.show{display:block}
+.suggest div{padding:8px 11px;font-size:13px;cursor:pointer}
+.suggest div:hover,.suggest div.hl{background:var(--blue-soft)}
+
+/* 既存事例 PJカード（開閉式） */
+.pj{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:.15s}
+.pj:hover{border-color:#cbd9ea}
+.pj-head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;user-select:none}
+.pj-head:hover{background:var(--surface-2)}
+.pj-chev{color:var(--muted);font-size:13px;transition:.2s;flex-shrink:0}
+.pj.open .pj-chev{transform:rotate(90deg)}
+.pj-main{flex:1;min-width:0}
+.pj-name{font-size:14px;font-weight:700}
+.pj-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.pj-meta .sep{margin:0 7px;color:#cbd5e1}
+.pj-total{font-family:'Spline Sans Mono',monospace;font-weight:600;color:var(--blue-deep)}
+.pj-detail{display:none;padding:0 16px 14px;border-top:1px solid var(--line-2)}
+.pj.open .pj-detail{display:block;animation:fade .2s}
+.pj-dl{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.dlbtn{font-family:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--blue);border-radius:8px;padding:8px 14px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:.15s}
+.dlbtn:hover{background:var(--blue-soft);border-color:#bcd6f5}
+.dlbtn .ic{font-size:13px}
+.up-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+@media(max-width:820px){.up-grid{grid-template-columns:repeat(4,1fr)}}
+.up-cell{background:var(--surface-2);border-radius:8px;padding:7px 8px;text-align:center;border-top:2px solid var(--muted)}
+.up-cell .k{font-size:10px;color:var(--muted);font-weight:600}
+.up-cell .v{font-family:'Spline Sans Mono',monospace;font-size:12px;font-weight:600;margin-top:1px}
+.pj-src{font-size:11px;color:var(--muted);margin-top:9px}
+
+/* Enhanced detail info grid */
+.pj-info{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+@media(max-width:820px){.pj-info{grid-template-columns:repeat(2,1fr)}}
+.pj-info-cell{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.pj-info-cell .k{font-size:10px;color:var(--muted);font-weight:600}
+.pj-info-cell .v{font-size:13px;font-weight:600;margin-top:1px;color:var(--ink)}
+.pj-detail-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2)}
+.pj-detail-section .dt{font-size:11.5px;font-weight:700;color:var(--teal);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.pj-detail-section .dt::before{content:"";width:3px;height:13px;background:var(--teal);border-radius:3px}
+.pj-items-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.pj-items-table th{text-align:left;padding:6px 8px;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:10.5px;border-bottom:1px solid var(--line)}
+.pj-items-table td{padding:6px 8px;border-bottom:1px solid var(--line-2)}
+.pj-items-table tr:hover td{background:var(--surface-2)}
+.pj-items-table .amt{font-family:'Spline Sans Mono',monospace;font-weight:600;text-align:right}
+.pj-items-table .cat-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:12px;color:#fff}
+.check-ok{color:var(--green);font-weight:700}.check-ng{color:var(--red);font-weight:700}
+
+/* Comparison table */
+.cmp-pills{display:flex;flex-wrap:wrap;gap:8px}
+.cmp-pill{display:flex;align-items:center;gap:6px;font-size:12px;background:var(--blue-soft);color:var(--blue-deep);border:1px solid #bcd6f5;border-radius:20px;padding:5px 8px 5px 12px}
+.cmp-pill .x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;border-radius:50%}
+.cmp-pill .x:hover{color:var(--red);background:var(--red-soft)}
+.cmp-pill.est{background:linear-gradient(100deg,#fef3e0,#fff8ed);color:#9a6a14;border-color:#f0dca8}
+
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
+.cmp-table th,.cmp-table td{padding:7px 10px;border-bottom:1px solid var(--line-2);text-align:right;white-space:nowrap}
+.cmp-table thead th{background:var(--surface-2);font-weight:700;color:var(--ink-2);position:sticky;top:0;z-index:4}
+.cmp-table .hdr1 th{border-bottom:1px solid var(--line);font-size:13px}
+.cmp-table .hdr2 th{font-size:11px;font-weight:600;color:var(--muted);border-bottom:2px solid var(--line)}
+.cmp-table .th-cat{text-align:left;width:110px;min-width:90px;z-index:5;left:0;position:sticky;background:var(--surface-2)}
+.cmp-table .th-item{text-align:left;width:140px;min-width:110px;z-index:5;left:110px;position:sticky;background:var(--surface-2)}
+.cmp-table .th-proj{text-align:center;font-size:12.5px}
+.cmp-table .th-sub{text-align:center}
+.cmp-table .th-area{font-weight:400;color:var(--muted);font-size:10px}
+.cmp-table .td-cat{text-align:left;font-weight:700;color:var(--ink);font-size:12.5px;background:var(--surface);position:sticky;left:0;z-index:2;border-right:1px solid var(--line-2);vertical-align:top;padding-top:10px}
+.cmp-table .td-item{text-align:left;font-weight:400;color:var(--ink-2);font-size:12.5px;background:var(--surface);position:sticky;left:110px;z-index:2}
+.cmp-table .td-total{text-align:left;font-weight:700;color:var(--ink);font-size:13px;background:var(--surface);position:sticky;left:0;z-index:2}
+.cmp-table .row-cat td{background:var(--surface-2);border-bottom:1px solid var(--line)}
+.cmp-table .row-cat .td-total{background:var(--surface-2)}
+.cmp-table .row-sub td:first-child,.cmp-table .row-sub .td-cat{background:var(--surface)}
+.cmp-table .row-sub .td-item{background:var(--surface)}
+.cmp-table .row-total{background:linear-gradient(100deg,var(--blue-soft),#eef5fd);font-weight:700;color:var(--blue-deep)}
+.cmp-table .row-total td{border-top:2px solid var(--blue);border-bottom:2px solid var(--blue);font-family:'Spline Sans Mono',monospace;font-size:14px}
+.cmp-table .row-total .td-total{background:linear-gradient(100deg,var(--blue-soft),#eef5fd)}
+.cmp-table .row-subtotal td{border-top:1px solid var(--line);font-weight:700}
+.cmp-table .row-subtotal .td-total{background:var(--surface-2)}
+.cmp-table .pct{color:var(--muted);font-size:11px;font-weight:400;margin-left:4px}
+.cmp-table .col-est{background:linear-gradient(180deg,#fffdf3,#fff8e6) !important;border-left:2px solid #e6dfae}
+.cmp-table .col-est-cost{background:linear-gradient(180deg,#fff8e6,#fff3d0) !important}
+.cmp-table th.col-est{background:linear-gradient(180deg,#fff4d6,#ffeeba) !important;color:#7a5a0a}
+.cmp-table th.col-est-cost{background:linear-gradient(180deg,#ffeeba,#ffe8a0) !important;color:#7a5a0a}
+.cmp-table .mono{font-family:'Spline Sans Mono',monospace}
+.cmp-empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
+.pj.flash{animation:flashpj 1.6s ease}
+@keyframes flashpj{0%{box-shadow:0 0 0 3px var(--blue)}30%{box-shadow:0 0 0 3px var(--blue)}100%{box-shadow:0 0 0 0 transparent}}
+
+/* Language toggle */
+.lang-toggle{padding:10px 18px;display:flex;gap:0;border-radius:0;overflow:hidden}
+.lang-toggle button{border:0;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.15s;background:rgba(255,255,255,.08);color:#8d9bb0;border-radius:0}
+.lang-toggle button:first-child{border-radius:7px 0 0 7px}
+.lang-toggle button:last-child{border-radius:0 7px 7px 0}
+.lang-toggle button:hover{background:rgba(255,255,255,.14);color:#fff}
+.lang-toggle button.active{background:var(--blue);color:#fff}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><h1>検索・概算ツール</h1><div class="sub">建設案件 概算・類似検索</div></div>
+    <nav class="nav" id="nav">
+      <button data-v="search" class="active">検索・概算</button>
+      <button data-v="compare">比較表</button>
+    </nav>
+    <div class="lang-toggle" id="langToggle">
+      <button class="active" data-lang="ja">JP</button>
+      <button data-lang="en">EN</button>
+    </div>
+    <div class="foot">レビュー版 · ダミーデータ内蔵</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar"><h2 id="ttl">検索・概算</h2><span class="badge">レビュー版</span></div>
+    <div class="content">
+
+      <!-- ============ 検索・概算 ============ -->
+      <section class="view active" id="view-search">
+
+        <div class="section">
+          <div class="sec-head"><span class="n">1</span><h3>検索条件</h3></div>
+          <div class="sec-body">
+            <div class="grid">
+              <div class="fld"><label>用途</label><select id="s_use"><option value="">すべて</option><option>オフィス</option><option>ホテル</option><option>データセンター</option><option>その他</option></select></div>
+              <div class="fld"><label>構造</label><select id="s_struct"><option value="">すべて</option><option>RC造</option><option>S造</option><option>SRC造</option><option>CFT造</option><option>木造</option><option>混構造</option></select></div>
+              <div class="fld"><label>施工床面積<span class="req">概算の分母</span></label><div class="unit"><input id="s_area" inputmode="decimal" placeholder="例：8000" value="8000"><span class="u">㎡</span></div></div>
+              <div class="fld check"><input type="checkbox" id="s_muse"><label style="margin:0">用途</label></div>
+              <div class="fld check"><input type="checkbox" id="s_mstruct"><label style="margin:0">構造</label></div>
+              <div class="fld check"><input type="checkbox" id="s_marea"><label style="margin:0">面積帯（0.5〜2倍）</label></div>
+            </div>
+            <div class="dynamic" id="searchDetail" style="margin-top:16px;display:none">
+              <!-- オフィス -->
+              <div class="dyn-block" data-sblock="オフィス">
+                <div class="dyn-title">オフィスの詳細条件</div>
+                <div class="grid">
+                  <div class="fld"><label>ビルグレード</label><select id="sd_of_grade"><option value="">すべて</option><option>A+</option><option>A</option><option>B</option></select></div>
+                </div>
+              </div>
+              <!-- ホテル -->
+              <div class="dyn-block" data-sblock="ホテル">
+                <div class="dyn-title">ホテルの詳細条件</div>
+                <div class="grid">
+                  <div class="fld"><label>グレード</label><select id="sd_ho_grade"><option value="">すべて</option><option>Ultra Luxury</option><option>Luxury</option><option>Upper Upscale</option><option>Upscale</option></select></div>
+                  <div class="fld"><label>タイプ</label><select id="sd_ho_type"><option value="">すべて</option><option>クラシック</option><option>ライフスタイル</option><option>コレクション</option></select></div>
+                </div>
+              </div>
+              <!-- データセンター -->
+              <div class="dyn-block" data-sblock="データセンター">
+                <div class="dyn-title">データセンターの詳細条件</div>
+                <div class="grid">
+                  <div class="fld"><label>最大受電電力 下限<span class="opt">MW</span></label><input id="sd_dc_mwmin" inputmode="decimal" placeholder="例：10"></div>
+                  <div class="fld"><label>ラック数 下限</label><input id="sd_dc_rackmin" inputmode="numeric" placeholder="例：500"></div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:14px"><button class="btn primary" id="searchBtn">既存事例を検索</button></div>
+          </div>
+        </div>
+
+        <div id="results" style="display:none">
+          <div class="section">
+            <div class="sec-head"><span class="n">2</span><h3>既存事例</h3><span class="note" id="hitCount"></span>
+              <span style="display:flex;gap:6px;margin-left:10px">
+                <button class="btn sm" id="toggleAll" title="展開/折りたたみ" style="padding:5px 9px;line-height:1;display:flex;align-items:center">
+                  <svg id="toggleIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 8 12 3 17 8"></polyline>
+                    <polyline points="7 16 12 21 17 16"></polyline>
+                  </svg>
+                </button>
+              </span>
+            </div>
+            <div class="sec-body"><div id="hitList"></div></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-head"><span class="n">3</span><h3>新規PJ概算：工事種別㎡単価</h3><span class="note">初期値は②既存事例の中央値を採用／可動域＝最小〜最大</span></div>
+            <div class="sec-body"><div class="sliders" id="sliders"></div></div>
+          </div>
+
+          <div class="section">
+            <div class="sec-head"><span class="n">4</span><h3>新規PJ概算：工事費</h3></div>
+            <div class="sec-body">
+              <div class="cards" id="estCards"></div>
+              <div class="total-card"><span class="l">概算 総額</span><span class="v" id="estTotal">¥0</span></div>
+              <div class="note" id="estNote"></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sec-head"><span class="n">5</span><h3>比較グラフ</h3></div>
+            <div class="sec-body">
+              <div class="chart-head">
+                <label style="font-size:12.5px;font-weight:600;color:var(--ink-2)">表示する費目</label>
+                <select id="graphCat"></select>
+              </div>
+              <div class="plot-wrap"><canvas id="plot" width="1640" height="900"></canvas><div class="tooltip" id="tip"></div></div>
+              <div class="legend" id="legend"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 比較表 ============ -->
+      <section class="view" id="view-compare">
+
+        <div class="section">
+          <div class="sec-head"><span class="n">1</span><h3 id="cmp-sec1-title">PJ名称・既存事例</h3></div>
+          <div class="sec-body">
+            <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+              <div class="fld" style="min-width:180px;max-width:220px">
+                <label id="cmp-pjname-label">PJ名称</label>
+                <input id="cmpPjName" placeholder="例：○○PJ" value="">
+              </div>
+              <div class="fld" style="flex:1;min-width:220px">
+                <label id="cmp-add-label">既存事例</label>
+                <select id="cmpPicker"><option value="">— 案件を選択 —</option></select>
+              </div>
+              <button class="btn primary" id="cmpAddBtn" style="margin-bottom:1px">追加</button>
+            </div>
+            <div id="cmpSelected" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="sec-head"><span class="n">2</span><h3 id="cmp-sec2-title">概算内訳 比較表</h3>
+            <span style="display:flex;gap:6px;margin-left:auto">
+              <button class="btn sm" id="cmpExportXlsx">⬇ Excel</button>
+              <button class="btn sm" id="cmpExportPdf">⬇ PDF</button>
+            </span>
+          </div>
+          <div class="sec-body" style="overflow-x:auto">
+            <div id="cmpTableWrap"></div>
+          </div>
+        </div>
+      </section>
+
+
+    </div>
+  </div>
+</div>
+
+<script>
+//================= カテゴリ定義 =================
+const CATS=[
+  {key:'arch', name:'建築工事',       color:'#1668c4'},
+  {key:'elec', name:'電気設備工事',   color:'#d98a1f'},
+  {key:'hvac', name:'空調設備',       color:'#0f9b8e'},
+  {key:'plumb',name:'衛生設備',       color:'#6a5acd'},
+  {key:'fire', name:'消火設備',       color:'#d6536d'},
+  {key:'lift', name:'昇降機設備工事', color:'#3a7bd5'},
+  {key:'other',name:'その他工事',     color:'#8896a8'},
+];
+// Display-level grouping for national standard
+const DISP_CATS=[
+  {key:'arch', name:'建築工事',       color:'#1668c4', keys:['arch']},
+  {key:'elec', name:'電気設備工事',   color:'#d98a1f', keys:['elec']},
+  {key:'mech', name:'機械設備工事',   color:'#0f9b8e', keys:['hvac','plumb','fire']},
+  {key:'lift', name:'昇降機設備工事', color:'#3a7bd5', keys:['lift']},
+  {key:'other',name:'その他工事',     color:'#8896a8', keys:['other']},
+];
+const STRUCTS=[{k:'RC造',c:'#27ae5f',b:330000},{k:'S造',c:'#2f6df0',b:300000},
+  {k:'SRC造',c:'#8e44ad',b:360000},{k:'CFT造',c:'#d98a1f',b:345000},{k:'木造',c:'#6b8e23',b:250000},{k:'混構造',c:'#aeb6c2',b:320000}];
+const USES=['オフィス','ホテル','データセンター','その他'];
+// 区分別の㎡単価の相対割合（建築が主、設備が従）
+const CAT_RATIO={arch:1.0,elec:0.11,hvac:0.095,plumb:0.07,fire:0.045,lift:0.035,other:0.03};
+
+//================= ダミー過去案件生成 =================
+function rnd(a,b){return a+Math.random()*(b-a);}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+let DATA=[];
+// 区分ごとの代表的な工種名（明細生成用）
+const WORK_NAMES={
+  arch:['躯体工事','仮設工事','土工事','地業工事','内装仕上工事','外装工事','建具工事','防水工事'],
+  elec:['電灯コンセント設備','動力設備','受変電設備','幹線設備','通信・LAN設備','防災設備'],
+  hvac:['空調機設備','換気設備','ダクト工事','冷温水配管','排煙設備'],
+  plumb:['給排水衛生配管','衛生器具設備','給湯設備','ガス設備'],
+  fire:['スプリンクラー設備','屋内消火栓設備','連結送水管','消火器'],
+  lift:['乗用エレベーター','非常用エレベーター','エスカレーター'],
+  other:['昇降機その他','外構工事','植栽工事','諸経費'],
+};
+const UNITS_BY={arch:'㎡',elec:'式',hvac:'台',plumb:'箇所',fire:'㎡',lift:'基',other:'式'};
+function genItems(p){
+  const items=[];
+  CATS.forEach(c=>{
+    const total=p.catCosts[c.key];
+    const names=WORK_NAMES[c.key];
+    const nrows=2+Math.floor(Math.random()*2); // 2-3行
+    let remain=total;
+    for(let i=0;i<nrows;i++){
+      const last=i===nrows-1;
+      const amt=last?remain:Math.round(total*rnd(0.2,0.5));
+      remain-=amt;
+      const unit=UNITS_BY[c.key];
+      const qty=unit==='㎡'?Math.round(p.area*rnd(0.3,1)):Math.round(rnd(1,20));
+      const up=Math.round(amt/Math.max(1,qty));
+      items.push({cat:c.key,catName:c.name,name:names[i%names.length],
+        qty,unit,unit_price:up,amount:Math.max(0,amt),
+        source:p.name.replace(/[ 　]/g,'')+'_見積.xlsx',
+        check:(Math.random()<0.12?'ng':'ok')});
+    }
+  });
+  return items;
+}
+function gen(){
+  DATA=[];
+  const names=['豊洲','神宮前','みなとみらい','心斎橋','名古屋駅前','福岡天神','札幌大通','仙台青葉',
+    '横浜関内','品川','新宿西口','渋谷桜丘','大手町','日本橋','梅田','三宮','博多駅東','京都四条'];
+  for(let i=0;i<180;i++){
+    const s=STRUCTS[Math.floor(Math.pow(Math.random(),1.2)*STRUCTS.length)%STRUCTS.length];
+    const use=USES[Math.floor(Math.random()*USES.length)];
+    const area=Math.round(Math.pow(10,rnd(3.1,4.9)));
+    const archUP=s.b*(1+gauss()*0.13);
+    const cats={};
+    CATS.forEach(c=>{cats[c.key]=Math.max(3000, archUP*CAT_RATIO[c.key]*(1+gauss()*0.18))*area;});
+    const proj={id:i,name:names[i%names.length]+(Math.floor(i/names.length)+1)+'計画',
+      use,structure:s.k,area,catCosts:cats};
+    // 共通詳細属性
+    proj.floors_above=Math.round(rnd(2,45));
+    proj.floors_below=Math.round(rnd(0,4));
+    proj.site_area=Math.round(area*rnd(0.3,0.7));
+    proj.building_area=Math.round(area*rnd(0.2,0.5));
+    proj.psid='920000000'+String(100000+Math.floor(Math.random()*900000));
+    proj.completion_year=Math.round(rnd(2005,2026));
+    proj.work_type=['新築','増築','改修','その他'][Math.floor(Math.random()*4)];
+    proj.location=['東京都千代田区','東京都港区','東京都中央区','大阪府大阪市北区','愛知県名古屋市中村区','福岡県福岡市中央区','北海道札幌市中央区','宮城県仙台市青葉区','神奈川県横浜市中区'][i%9];
+    proj.client=['○○不動産','△△商事','□□ホールディングス','☆☆投資法人','◇◇開発'][Math.floor(Math.random()*5)];
+    proj.biz_type=['設計','施工','設計施工','CM'][Math.floor(Math.random()*4)];
+    proj.contractors={
+      // 建築系
+      a_work:['鹿島建設','大成建設','清水建設','大林組','竹中工務店'][Math.floor(Math.random()*5)],
+      b_work:['鹿島建設','大成建設','清水建設','戸田建設','前田建設'][Math.floor(Math.random()*5)],
+      interior:['丹青社','乃村工藝社','船場','スペース'][Math.floor(Math.random()*4)],
+      partition:['コマニー','イトーキ','パラマウント硝子'][Math.floor(Math.random()*3)],
+      custom_furniture:['オカムラ','イトーキ','内田洋行','コクヨ'][Math.floor(Math.random()*4)],
+      furniture:['オカムラ','イトーキ','内田洋行','コクヨ'][Math.floor(Math.random()*4)],
+      arch_other:['—','鹿島建設','大成建設'][Math.floor(Math.random()*3)],
+      // 設備系
+      hvac:['高砂熱学工業','新菱冷熱工業','三建設備工業','ダイダン'][Math.floor(Math.random()*4)],
+      plumb:['三建設備工業','ダイダン','朝日工業社'][Math.floor(Math.random()*3)],
+      fire:['能美防災','ホーチキ','日本ドライケミカル'][Math.floor(Math.random()*3)],
+      elec:['関電工','きんでん','ユアテック','九電工'][Math.floor(Math.random()*4)],
+      lift:['日立ビルシステム','三菱電機','OTIS','フジテック'][Math.floor(Math.random()*4)],
+      security:['綜合警備保障','セコム','ALSOK'][Math.floor(Math.random()*3)],
+    };
+    // 用途別の詳細属性（詳細検索用）
+    if(use==='オフィス'){proj.detail={
+      grade:['A+','A','B'][Math.floor(Math.random()*3)],
+      seats:Math.round(rnd(50,500)),
+      meeting_rooms:Math.round(rnd(3,25)),
+    };}
+    else if(use==='ホテル'){proj.detail={
+      grade:['Ultra Luxury','Luxury','Upper Upscale','Upscale'][Math.floor(Math.random()*4)],
+      type:['クラシック','ライフスタイル','コレクション'][Math.floor(Math.random()*3)],
+      star:['★★★★★','★★★★','★★★'][Math.floor(Math.random()*3)],
+      service_type:['フルサービス','リミテッドサービス','セレクトサービス'][Math.floor(Math.random()*3)],
+      brand:['オートグラフコレクション','マリオット','ヒルトン','IHG','ハイアット','アコー'][Math.floor(Math.random()*6)],
+      rooms:Math.round(rnd(80,400)),
+    };}
+    else if(use==='データセンター'){proj.detail={
+      mw:Math.round(rnd(2,40)),
+      racks:Math.round(rnd(100,2000)),
+      it_load:Math.round(rnd(2000,15000)),
+      hv_transformer:Math.round(rnd(3000,20000)),
+      generator:Math.round(rnd(3000,25000)),
+      ups:Math.round(rnd(2000,18000)),
+    };}
+    else proj.detail={};
+    proj.items=genItems(proj);
+    DATA.push(proj);
+  }
+}
+gen();
+// removed: pcount
+
+//================= 検索 =================
+let state=null;
+function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function search(){
+  const use=document.getElementById('s_use').value;
+  const struct=document.getElementById('s_struct').value;
+  const area=parseFloat(document.getElementById('s_area').value)||0;
+  const mUse=document.getElementById('s_muse').checked;
+  const mStruct=document.getElementById('s_mstruct').checked;
+  const mArea=document.getElementById('s_marea').checked&&area>0;
+  const applied=[];
+  let hits=DATA.slice();
+  if(mUse&&use){hits=hits.filter(p=>p.use===use);applied.push(t('flt_use_pre')+(USE_NAME_MAP[currentLang][use]||use)+t('flt_use_post'));}
+  if(mStruct&&struct){hits=hits.filter(p=>p.structure===struct);applied.push(t('flt_struct_pre')+(STRUCT_NAME_MAP[currentLang][struct]||struct)+t('flt_struct_post'));}
+  if(mArea){const lo=area*0.5,hi=area*2;hits=hits.filter(p=>p.area>=lo&&p.area<=hi);
+    applied.push(t('flt_area_range')+Math.round(lo).toLocaleString()+'〜'+Math.round(hi).toLocaleString()+'㎡');}
+  // 用途別の詳細条件（用途で絞り込む時のみ有効）
+  if(mUse&&use==='オフィス'){const g=document.getElementById('sd_of_grade').value;
+    if(g){hits=hits.filter(p=>p.detail&&p.detail.grade===g);applied.push(t('flt_grade_pre')+g+t('flt_close'));}}
+  if(mUse&&use==='ホテル'){const g=document.getElementById('sd_ho_grade').value,t2=document.getElementById('sd_ho_type').value;
+    if(g){hits=hits.filter(p=>p.detail&&p.detail.grade===g);applied.push(t('flt_hgrade_pre')+g+t('flt_close'));}
+    if(t2){hits=hits.filter(p=>p.detail&&p.detail.type===t2);applied.push(t('flt_type_pre')+t2+t('flt_close'));}}
+  if(mUse&&use==='データセンター'){const mw=parseFloat(document.getElementById('sd_dc_mwmin').value),rk=parseFloat(document.getElementById('sd_dc_rackmin').value);
+    if(mw){hits=hits.filter(p=>p.detail&&p.detail.mw>=mw);applied.push((currentLang==='ja'?'最大受電電力 ':'Max power ')+mw+t('flt_mw_post'));}
+    if(rk){hits=hits.filter(p=>p.detail&&p.detail.racks>=rk);applied.push((currentLang==='ja'?'ラック数 ':'Racks ')+rk+t('flt_rack_post'));}}
+  if(!applied.length)applied.push(t('flt_none'));
+  if(area>0)hits.sort((a,b)=>Math.abs(a.area-area)-Math.abs(b.area-area));
+
+  // 区分別㎡単価の統計
+  const stats={};
+  CATS.forEach(c=>{
+    const ups=hits.map(p=>p.catCosts[c.key]/p.area).filter(v=>v>0);
+    stats[c.key]={n:ups.length,min:ups.length?Math.min(...ups):null,max:ups.length?Math.max(...ups):null,median:median(ups)};
+  });
+  state={hits,applied,area,struct,stats,chosen:{}};
+  CATS.forEach(c=>{state.chosen[c.key]=stats[c.key].median;});
+  renderResults();
+}
+function renderResults(){
+  document.getElementById('results').style.display='block';
+  document.getElementById('hitCount').textContent=state.hits.length+(currentLang==='ja'?' 件':' cases');
+  if(typeof setToggleIcon==='function')setToggleIcon(false);
+  renderHitList();renderSliders();renderEstimate();renderGraphCatOptions_i18n();drawPlot();renderLegend_i18n();
+  if(typeof populateCmpPicker==='function'){populateCmpPicker();renderCompareTable();}
+}
+
+//================= スライダー =================
+function fmt(n){return n==null?'—':'¥'+Math.round(n).toLocaleString();}
+function renderSliders(){
+  const box=document.getElementById('sliders');box.innerHTML='';
+  CATS.forEach(c=>{
+    const s=state.stats[c.key];
+    const wrap=document.createElement('div');
+    wrap.className='slider'+(s.n===0?' disabled':'');
+    if(s.n===0){
+      wrap.innerHTML=`<div class="top"><span class="nm"><span class="dot" style="background:${c.color}"></span>${c.name}</span><span class="val">—</span></div>
+        <div class="meta">データなし</div><input type="range" disabled>`;
+      box.appendChild(wrap);return;
+    }
+    const lo=Math.floor(s.min),hi=Math.ceil(s.max),val=Math.round(state.chosen[c.key]);
+    wrap.innerHTML=`
+      <div class="top"><span class="nm"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
+        <span class="val" id="val_${c.key}" style="color:${c.color}">¥${val.toLocaleString()}/㎡</span></div>
+      <div class="meta">n=${s.n}　<span class="reset-median" data-cat="${c.key}" title="クリックで中央値に戻す">中央値 ¥${Math.round(s.median).toLocaleString()}</span></div>
+      <input type="range" min="${lo}" max="${hi}" value="${val}" step="${Math.max(100,Math.round((hi-lo)/200))}" id="rng_${c.key}">
+      <div class="scale"><span>¥${lo.toLocaleString()}</span><span>¥${hi.toLocaleString()}</span></div>`;
+    box.appendChild(wrap);
+    const rng=wrap.querySelector('input');
+    rng.addEventListener('input',e=>{
+      state.chosen[c.key]=parseFloat(e.target.value);
+      document.getElementById('val_'+c.key).textContent='¥'+Math.round(state.chosen[c.key]).toLocaleString()+'/㎡';
+      renderEstimate();drawPlot();
+    });
+    // 中央値テキストをクリック → 中央値に戻す
+    wrap.querySelector('.reset-median').addEventListener('click',()=>{
+      state.chosen[c.key]=s.median;
+      rng.value=Math.round(s.median);
+      document.getElementById('val_'+c.key).textContent='¥'+Math.round(s.median).toLocaleString()+'/㎡';
+      renderEstimate();drawPlot();
+    });
+  });
+}
+
+//================= 概算 =================
+function renderEstimate(){
+  const area=state.area;const box=document.getElementById('estCards');box.innerHTML='';
+  let total=null;
+  CATS.forEach(c=>{
+    const up=state.chosen[c.key];
+    const cost=(up&&area>0)?up*area:null;
+    if(cost!=null)total=(total||0)+cost;
+    const rc=document.createElement('div');rc.className='rc';rc.style.borderLeftColor=c.color;
+    rc.innerHTML=`<div class="l">${c.name}</div><div class="v">${fmt(cost)}</div>`;
+    box.appendChild(rc);
+  });
+  document.getElementById('estTotal').textContent=fmt(total);
+  document.getElementById('estNote').textContent=
+    `根拠案件数 ${state.hits.length} 件 ／ 施工床面積 ${area.toLocaleString()}㎡ ／ 各区分の㎡単価はスライダーで調整可能（可動域は類似案件の最小〜最大）。`;
+}
+
+//================= 比較グラフ =================
+function renderGraphCatOptions(){
+  const sel=document.getElementById('graphCat');
+  sel.innerHTML='<option value="total">総工事費</option>'+CATS.map(c=>`<option value="${c.key}">${c.name}</option>`).join('');
+  sel.onchange=()=>{drawPlot();renderLegend();};
+}
+const cv=document.getElementById('plot'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+const PAD={l:130,r:40,t:30,b:80};
+function unitPriceOf(p,cat){
+  if(cat==='total'){let s=0;CATS.forEach(c=>s+=p.catCosts[c.key]);return s/p.area;}
+  if(cat==='mech')return ((p.catCosts.hvac||0)+(p.catCosts.plumb||0)+(p.catCosts.fire||0))/p.area;
+  return p.catCosts[cat]/p.area;
+}
+let plotPts=[];
+function drawPlot(){
+  const cat=document.getElementById('graphCat').value;
+  const pts=DATA.map(p=>({x:p.area,y:unitPriceOf(p,cat),s:p.structure,name:p.name,id:p.id,use:p.use,area:p.area,structure:p.structure}));
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xMin=Math.min(...xs)*0.8,xMax=Math.max(...xs)*1.15;
+  let yMax=Math.max(...ys)*1.12;
+  // 概算★
+  let est=null;const area=state.area;
+  if(area>0){
+    const up=cat==='total'?Object.values(state.chosen).reduce((a,b)=>a+(b||0),0):cat==="mech"?((state.chosen.hvac||0)+(state.chosen.plumb||0)+(state.chosen.fire||0)):state.chosen[cat];
+    if(up){est={x:area,y:up};yMax=Math.max(yMax,up*1.1);}
+  }
+  const lx=v=>Math.log10(v);
+  const sx=v=>PAD.l+(lx(v)-lx(xMin))/(lx(xMax)-lx(xMin))*(W-PAD.l-PAD.r);
+  const sy=v=>H-PAD.b-(v/yMax)*(H-PAD.t-PAD.b);
+  ctx.clearRect(0,0,W,H);
+  // grid y
+  ctx.font='22px "Spline Sans Mono",monospace';ctx.textBaseline='middle';
+  const yStep=Math.pow(10,Math.floor(Math.log10(yMax)))/2||100000;
+  for(let v=0;v<=yMax;v+=yStep){const y=sy(v);ctx.strokeStyle='#e4ebf3';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    ctx.fillStyle='#8896a8';ctx.textAlign='right';ctx.fillText('¥'+Math.round(v).toLocaleString(),PAD.l-14,y);}
+  // grid x (log ticks)
+  ctx.textAlign='center';
+  [1000,2000,5000,10000,20000,50000,100000].forEach(t=>{if(t<xMin||t>xMax)return;const x=sx(t);
+    ctx.strokeStyle='#edf2f8';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();
+    ctx.fillStyle='#8896a8';ctx.textBaseline='top';ctx.fillText(t.toLocaleString(),x,H-PAD.b+10);ctx.textBaseline='middle';});
+  ctx.fillStyle='#48566a';ctx.font='600 22px "Zen Kaku Gothic New"';ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText('施工床面積(㎡)',(PAD.l+W-PAD.r)/2,H-PAD.b+40);
+  ctx.save();ctx.translate(36,(PAD.t+H-PAD.b)/2);ctx.rotate(-Math.PI/2);ctx.textBaseline='middle';ctx.fillText('㎡単価(円)',0,0);ctx.restore();
+  // 回帰曲線（2次, log x）
+  if(pts.length>=5){
+    const lxs=xs.map(lx);const co=polyfit2(lxs,ys);const resid=ys.map((y,i)=>y-poly2(co,lxs[i]));
+    const sd=Math.sqrt(resid.reduce((a,b)=>a+b*b,0)/resid.length);
+    const draw=(off,w,dash)=>{ctx.beginPath();let f=true;
+      for(let px=PAD.l;px<=W-PAD.r;px+=6){const v=Math.pow(10,lx(xMin)+(px-PAD.l)/(W-PAD.l-PAD.r)*(lx(xMax)-lx(xMin)));
+        const y=sy(Math.max(0,poly2(co,lx(v))+off));if(f){ctx.moveTo(px,y);f=false;}else ctx.lineTo(px,y);}
+      ctx.strokeStyle=dash?'#b4bdca':'#7d8ba0';ctx.lineWidth=w;if(dash)ctx.setLineDash([5,5]);else ctx.setLineDash([]);ctx.stroke();ctx.setLineDash([]);};
+    draw(sd,2,true);draw(0,3.5,false);draw(-sd,2,true);
+  }
+  // 散布
+  plotPts=[];
+  pts.forEach(p=>{const x=sx(p.x),y=sy(p.y);const col=(STRUCTS.find(s=>s.k===p.s)||{c:'#8896a8'}).c;
+    ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fillStyle=col;ctx.globalAlpha=.8;ctx.fill();ctx.globalAlpha=1;
+    plotPts.push({px:x,py:y,p});});
+  // ★概算
+  if(est){const x=sx(est.x),y=sy(est.y);star(x,y,17,'#e0492e');}
+}
+function star(x,y,r,fill){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5;const rr=i%2?r*0.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();}
+function polyfit2(xs,ys){const n=xs.length;const Sx=xs.reduce((a,b)=>a+b,0),Sx2=xs.reduce((a,b)=>a+b*b,0),Sx3=xs.reduce((a,b)=>a+b**3,0),Sx4=xs.reduce((a,b)=>a+b**4,0);
+  const Sy=ys.reduce((a,b)=>a+b,0),Sxy=xs.reduce((a,_,i)=>a+xs[i]*ys[i],0),Sx2y=xs.reduce((a,_,i)=>a+xs[i]**2*ys[i],0);
+  return solve3([[n,Sx,Sx2],[Sx,Sx2,Sx3],[Sx2,Sx3,Sx4]],[Sy,Sxy,Sx2y]);}
+function solve3(A,b){const M=A.map((r,i)=>[...r,b[i]]);for(let i=0;i<3;i++){let piv=M[i][i];if(Math.abs(piv)<1e-12){for(let j=i+1;j<3;j++)if(Math.abs(M[j][i])>1e-12){[M[i],M[j]]=[M[j],M[i]];break;}piv=M[i][i];}piv=piv||1e-12;M[i]=M[i].map(v=>v/piv);for(let j=0;j<3;j++)if(j!==i){const f=M[j][i];M[j]=M[j].map((v,k)=>v-f*M[i][k]);}}return[M[0][3],M[1][3],M[2][3]];}
+function poly2(c,x){return c[0]+c[1]*x+c[2]*x*x;}
+function renderLegend(){
+  const el=document.getElementById('legend');
+  el.innerHTML=STRUCTS.map(s=>`<span class="item"><span class="mk" style="background:${s.c}"></span>${s.k}</span>`).join('')
+    +`<span class="item"><span class="mk" style="border-top:2px dashed #7d8ba0;width:18px;height:0;border-radius:0"></span>回帰曲線</span>`
+    +`<span class="item"><span class="star">★</span>概算結果</span>`;
+}
+// tooltip
+const tip=document.getElementById('tip');
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+  let best=null,bd=1e9;plotPts.forEach(o=>{const d=(o.px-mx)**2+(o.py-my)**2;if(d<bd){bd=d;best=o;}});
+  if(best&&bd<500){tip.style.opacity=1;tip.style.left=(best.px/W*r.width+12)+'px';tip.style.top=(best.py/H*r.height-10)+'px';
+    tip.innerHTML=`<div>${best.p.name}</div><div>${best.p.structure}・${best.p.use}</div><div>延床 <b>${best.p.area.toLocaleString()}㎡</b></div><div style="color:#9fd0ff;margin-top:3px">クリックで既存事例へ</div>`;
+    cv.style.cursor='pointer';}
+  else {tip.style.opacity=0;cv.style.cursor='default';}
+});
+cv.addEventListener('mouseleave',()=>{tip.style.opacity=0;cv.style.cursor='default';});
+// 点クリック → ②既存事例の該当カードへジャンプして開く
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+  let best=null,bd=1e9;plotPts.forEach(o=>{const d=(o.px-mx)**2+(o.py-my)**2;if(d<bd){bd=d;best=o;}});
+  if(!best||bd>=500)return;
+  jumpToCase(best.p.id);
+});
+function jumpToCase(id){
+  const card=document.querySelector('#hitList .pj[data-pj="'+id+'"]');
+  if(!card){
+    // 既存事例の表示上限(50件)外なら知らせる
+    alert('この案件は既存事例の表示件数の範囲外です（上位50件のみ表示）。検索条件を絞ると表示されます。');
+    return;
+  }
+  card.classList.add('open');
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  card.classList.add('flash');
+  setTimeout(()=>card.classList.remove('flash'),1600);
+}
+
+//================= 明細 =================
+function renderHitList(){
+  const box=document.getElementById('hitList');
+  box.innerHTML=state.hits.slice(0,50).map((p,i)=>{
+    const total=Math.round(CATS.reduce((a,c)=>a+p.catCosts[c.key],0));
+    const cells=CATS.map(c=>`<div class="up-cell" style="border-top-color:${c.color}">
+        <div class="k">${c.name}</div><div class="v">¥${Math.round(p.catCosts[c.key]/p.area).toLocaleString()}</div></div>`).join('');
+    const srcs=[...new Set(p.items.map(it=>it.source))].join(', ');
+    const open=false;
+    return `<div class="pj${open?' open':''}" data-pj="${p.id}">
+      <div class="pj-head">
+        <span class="pj-chev">▸</span>
+        <div class="pj-main">
+          <div class="pj-name">${p.name}</div>
+          <div class="pj-meta">${p.use}<span class="sep">|</span>${p.structure}<span class="sep">|</span>${p.area.toLocaleString()}㎡<span class="sep">|</span>総工事費 <span class="pj-total">¥${total.toLocaleString()}</span></div>
+        </div>
+      </div>
+      <div class="pj-detail">
+        <div class="pj-dl">
+          <button class="dlbtn" data-dl-est="${p.id}"><span class="ic">⬇</span>見積書をダウンロード</button>
+          <button class="dlbtn" data-dl-dwg="${p.id}"><span class="ic">⬇</span>図面をダウンロード</button>
+        </div>
+        <div class="up-grid">${cells}</div>
+        <div class="pj-src">参照元: ${srcs}</div>
+      </div>
+    </div>`;
+  }).join('')+(state.hits.length>50?`<div class="pj-meta" style="text-align:center;padding:6px">ほか ${state.hits.length-50} 件…</div>`:'');
+  // 開閉（ヘッダークリック）
+  box.querySelectorAll('.pj-head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
+  box.querySelectorAll('[data-dl-est]').forEach(b=>b.onclick=e=>{e.stopPropagation();downloadEstimate(+b.dataset.dlEst);});
+  box.querySelectorAll('[data-dl-dwg]').forEach(b=>b.onclick=e=>{e.stopPropagation();downloadDrawing(+b.dataset.dlDwg);});
+}
+// 見積書（工種明細）をCSVで落とす（レビュー版＝ダミー。本番はDBの実ファイル）
+function downloadEstimate(id){
+  const p=DATA.find(x=>x.id===id);if(!p)return;
+  const catName=k=>(CATS.find(c=>c.key===k)||{}).name||k;
+  const rows=[['区分','工種名','数量','単位','単価','金額','参照元','検算']];
+  p.items.forEach(it=>rows.push([catName(it.cat),it.name,it.qty,it.unit,it.unit_price,it.amount,it.source,it.check]));
+  const csv=rows.map(r=>r.map(v=>{const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=p.name.replace(/[ 　]/g,'')+'_見積書.csv';a.click();
+}
+// 図面（レビュー版＝ダミーのテキスト。本番はDBの実図面ファイル）
+function downloadDrawing(id){
+  const p=DATA.find(x=>x.id===id);if(!p)return;
+  const txt=`【図面ダウンロード（レビュー版ダミー）】\n案件名: ${p.name}\n用途: ${p.use} / 構造: ${p.structure} / 施工床面積: ${p.area.toLocaleString()}㎡\n\n本番版では、この案件に紐づく実際の図面ファイル（PDF/CAD等）がダウンロードされます。`;
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=p.name.replace(/[ 　]/g,'')+'_図面_ダミー.txt';a.click();
+}
+document.getElementById('searchBtn').onclick=search;
+// 用途を選ぶと、その用途の詳細条件を表示
+document.getElementById('s_use').addEventListener('change',function(){
+  const u=this.value;const box=document.getElementById('searchDetail');
+  const has=['オフィス','ホテル','データセンター'].includes(u);
+  box.style.display=has?'block':'none';
+  box.querySelectorAll('.dyn-block').forEach(d=>d.classList.toggle('active',d.dataset.sblock===u));
+});
+document.getElementById('toggleAll').onclick=function(){
+  const cards=[...document.querySelectorAll('#hitList .pj')];
+  const anyClosed=cards.some(p=>!p.classList.contains('open'));
+  cards.forEach(p=>p.classList.toggle('open',anyClosed));
+  this.textContent=anyClosed?'すべて閉じる':'すべて開く';
+};
+
+//================= ナビ =================
+const TITLES={search:'検索・概算',compare:'比較表'};
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+b.dataset.v).classList.add('active');
+  document.getElementById('ttl').textContent=TITLES[b.dataset.v];
+});
+
+
+//================= 初回検索 =================
+//================= 初回検索は i18n 定義後に実行 =================
+
+//================= 言語切替 (i18n) =================
+let currentLang='ja';
+const T={
+  // Sidebar
+  'brand_title':        {ja:'検索・概算ツール',en:'Search & Estimate Tool'},
+  'brand_sub':          {ja:'建設案件 概算・類似検索',en:'Construction Project Estimate & Similarity Search'},
+  'nav_search':         {ja:'検索・概算',en:'Search & Estimate'},
+  'nav_db':             {ja:'データベース構築',en:'Database Builder'},
+  'nav_api':            {ja:'API設定',en:'API Settings'},
+  'sidebar_foot':       {ja:'レビュー版 · ダミーデータ内蔵',en:'Review Edition · Built-in Dummy Data'},
+  // Topbar
+  'badge':              {ja:'レビュー版',en:'Review'},
+  // View titles (TITLES object)
+  'ttl_search':         {ja:'検索・概算',en:'Search & Estimate'},
+  'ttl_db':             {ja:'データベース構築',en:'Database Builder'},
+  'ttl_api':            {ja:'API設定',en:'API Settings'},
+  // Search view
+  'dummy_pill_pre':     {ja:'ダミーの過去案件 ',en:'Running with '},
+  'dummy_pill_post':    {ja:' 件で動作します',en:' dummy past projects'},
+  'sec1_title':         {ja:'検索条件',en:'Search Criteria'},
+  'lbl_use':            {ja:'用途',en:'Usage'},
+  'lbl_struct':         {ja:'構造',en:'Structure'},
+  'lbl_area':           {ja:'施工床面積',en:'Construction Floor Area'},
+  'lbl_area_req':       {ja:'概算の分母',en:'Estimate denominator'},
+  'use_all':            {ja:'すべて',en:'All'},
+  'use_office':         {ja:'オフィス',en:'Office'},
+  'use_hotel':          {ja:'ホテル',en:'Hotel'},
+  'use_dc':             {ja:'データセンター',en:'Data Center'},
+  'use_other':          {ja:'その他',en:'Other'},
+  'struct_all':         {ja:'すべて',en:'All'},
+  'struct_rc':          {ja:'RC造',en:'RC'},
+  'struct_s':           {ja:'S造',en:'Steel'},
+  'struct_src':         {ja:'SRC造',en:'SRC'},
+  'struct_cft':         {ja:'CFT造',en:'CFT'},
+  'struct_wood':        {ja:'木造',en:'Wood'},
+  'struct_hybrid':      {ja:'混構造',en:'Hybrid'},
+  'chk_use':            {ja:'用途',en:'Usage'},
+  'chk_struct':         {ja:'構造',en:'Structure'},
+  'chk_area':           {ja:'面積帯（0.5〜2倍）',en:'Area range (0.5×–2×)'},
+  'dyn_office':         {ja:'オフィスの詳細条件',en:'Office Detail Criteria'},
+  'lbl_bldg_grade':     {ja:'ビルグレード',en:'Building Grade'},
+  'dyn_hotel':          {ja:'ホテルの詳細条件',en:'Hotel Detail Criteria'},
+  'lbl_grade':          {ja:'グレード',en:'Grade'},
+  'lbl_type':           {ja:'タイプ',en:'Type'},
+  'dyn_dc':             {ja:'データセンターの詳細条件',en:'Data Center Detail Criteria'},
+  'lbl_dc_mw':          {ja:'最大受電電力 下限',en:'Min. Max Power'},
+  'lbl_dc_rack':        {ja:'ラック数 下限',en:'Min. Rack Count'},
+  'btn_search':         {ja:'既存事例を検索',en:'Search Existing Cases'},
+  // Results
+  'sec2_title':         {ja:'既存事例',en:'Existing Cases'},
+  'btn_openall':        {ja:'すべて開く',en:'Open All'},
+  'btn_closeall':       {ja:'すべて閉じる',en:'Close All'},
+  'sec3_title':         {ja:'新規PJ概算：工事種別㎡単価',en:'New PJ Estimate: Unit Price/㎡ by Work Type'},
+  'sec3_note':          {ja:'初期値は②既存事例の中央値を採用／可動域＝最小〜最大',en:'Initial values = median of cases; slider range = min–max'},
+  'sec4_title':         {ja:'新規PJ概算：工事費',en:'New PJ Estimate: Construction Cost'},
+  'total_label':        {ja:'概算 総額',en:'Estimated Total'},
+  'sec5_title':         {ja:'比較グラフ',en:'Comparison Chart'},
+  'lbl_graph_cat':      {ja:'表示する費目',en:'Display Category'},
+  // Categories
+  'cat_arch':           {ja:'建築',en:'Architecture'},
+  'cat_elec':           {ja:'電気設備',en:'Electrical'},
+  'cat_hvac':           {ja:'空調設備',en:'HVAC'},
+  'cat_plumb':          {ja:'衛生設備',en:'Plumbing'},
+  'cat_fire':           {ja:'消火設備',en:'Fire Protection'},
+  'cat_lift':           {ja:'昇降機設備',en:'Elevator'},
+  'cat_other':          {ja:'その他',en:'Other'},
+  'cat_total':          {ja:'総工事費',en:'Total Construction Cost'},
+  // DB view
+  'db_lead':            {ja:'過去案件の概要を入力します。建物用途を選ぶと、その用途に応じた入力項目が下に出ます。',en:'Enter past project overviews. Selecting a building usage will show relevant input fields below.'},
+  'db_sec1_title':      {ja:'概要',en:'Overview'},
+  'db_sec1_note':       {ja:'共通項目',en:'Common Fields'},
+  'lbl_psid':           {ja:'PS Project ID',en:'PS Project ID'},
+  'lbl_psid_req':       {ja:'必須',en:'Required'},
+  'lbl_proj_name':      {ja:'プロジェクト名',en:'Project Name'},
+  'lbl_location':       {ja:'所在地',en:'Location'},
+  'lbl_client':         {ja:'クライアント',en:'Client'},
+  'lbl_site_area':      {ja:'敷地面積',en:'Site Area'},
+  'lbl_bldg_area':      {ja:'建築面積',en:'Building Area'},
+  'lbl_const_area':     {ja:'施工床面積',en:'Construction Floor Area'},
+  'lbl_const_area_req': {ja:'必須・概算の分母',en:'Required · Estimate denominator'},
+  'lbl_completion':     {ja:'竣工引渡年',en:'Completion Year'},
+  'lbl_work_type':      {ja:'工事区分',en:'Work Type'},
+  'lbl_biz_type':       {ja:'業務区分',en:'Business Type'},
+  'lbl_struct_db':      {ja:'構造',en:'Structure'},
+  'lbl_floors_above':   {ja:'地上',en:'Above Ground'},
+  'lbl_floors_below':   {ja:'地下',en:'Below Ground'},
+  'lbl_bldg_use':       {ja:'建物用途',en:'Building Usage'},
+  'select_choose':      {ja:'選択',en:'Select'},
+  'wt_new':             {ja:'新築',en:'New Construction'},
+  'wt_expand':          {ja:'増築',en:'Expansion'},
+  'wt_reno':            {ja:'改修',en:'Renovation'},
+  'wt_other':           {ja:'その他',en:'Other'},
+  'bt_design':          {ja:'設計',en:'Design'},
+  'bt_construct':       {ja:'施工',en:'Construction'},
+  'bt_both':            {ja:'設計施工',en:'Design & Build'},
+  'bt_cm':              {ja:'CM',en:'CM'},
+  'bt_other':           {ja:'その他',en:'Other'},
+  'struct_wood':        {ja:'木造',en:'Wood'},
+  'struct_other':       {ja:'その他',en:'Other'},
+  'tab_office':         {ja:'オフィス',en:'Office'},
+  'tab_hotel':          {ja:'ホテル',en:'Hotel'},
+  'tab_dc':             {ja:'データセンター',en:'Data Center'},
+  'tab_other':          {ja:'その他',en:'Other'},
+  'dyn_office_detail':  {ja:'オフィス 詳細',en:'Office Details'},
+  'lbl_seats':          {ja:'座席数',en:'Seats'},
+  'lbl_meeting_rooms':  {ja:'会議室数',en:'Meeting Rooms'},
+  'grade_guide':        {ja:'ビルグレードの目安',en:'Building Grade Guide'},
+  'gh_grade':           {ja:'グレード',en:'Grade'},
+  'gh_gfa':             {ja:'延床面積',en:'GFA'},
+  'gh_typical':         {ja:'基準階面積',en:'Typical Floor Area'},
+  'gh_age':             {ja:'築年数',en:'Age'},
+  'gh_a+_gfa':          {ja:'60,000㎡以上',en:'60,000㎡+'},
+  'gh_a+_typ':          {ja:'1,500㎡以上',en:'1,500㎡+'},
+  'gh_a+_age':          {ja:'築11年未満',en:'<11 years old'},
+  'gh_a_gfa':           {ja:'30,000㎡以上',en:'30,000㎡+'},
+  'gh_a_typ':           {ja:'1,000㎡以上',en:'1,000㎡+'},
+  'gh_a_age':           {ja:'1990年竣工以降',en:'Completed after 1990'},
+  'gh_b_gfa':           {ja:'5,000〜30,000㎡未満',en:'5,000–30,000㎡'},
+  'gh_b_typ':           {ja:'300〜1,000㎡未満',en:'300–1,000㎡'},
+  'gh_b_age':           {ja:'1982年竣工以降',en:'Completed after 1982'},
+  'dyn_hotel_detail':   {ja:'ホテル 詳細',en:'Hotel Details'},
+  'lbl_star':           {ja:'星',en:'Star Rating'},
+  'lbl_service_type':   {ja:'サービスタイプ',en:'Service Type'},
+  'lbl_brand':          {ja:'ブランド',en:'Brand'},
+  'lbl_rooms':          {ja:'客室 施工数',en:'Rooms (Constructed)'},
+  'hotel_grade_guide':  {ja:'ホテルグレードの目安',en:'Hotel Grade Guide'},
+  'hg_grade':           {ja:'グレード',en:'Grade'},
+  'hg_avg_room':        {ja:'平均客室面積',en:'Avg. Room Area'},
+  'hotel_type_guide':   {ja:'ホテルタイプの目安',en:'Hotel Type Guide'},
+  'ht_type':            {ja:'タイプ',en:'Type'},
+  'ht_desc':            {ja:'概要',en:'Description'},
+  'ht_classic':         {ja:'クラシック',en:'Classic'},
+  'ht_classic_d':       {ja:'一般的なホテルブランド',en:'Traditional hotel brands'},
+  'ht_lifestyle':       {ja:'ライフスタイル',en:'Lifestyle'},
+  'ht_lifestyle_d':     {ja:'デザイン性・コンセプト重視',en:'Design & concept focused'},
+  'ht_collection':      {ja:'コレクション',en:'Collection'},
+  'ht_collection_d':    {ja:'独立系ホテルのコレクション',en:'Independent hotel collections'},
+  'dyn_dc_detail':      {ja:'データセンター 詳細',en:'Data Center Details'},
+  'lbl_max_power':      {ja:'最大受電電力',en:'Max. Power Intake'},
+  'lbl_racks':          {ja:'ラック数',en:'Rack Count'},
+  'lbl_it_load':        {ja:'IT負荷',en:'IT Load'},
+  'lbl_hv_trans':       {ja:'高圧変圧器容量',en:'HV Transformer Capacity'},
+  'lbl_gen_cap':        {ja:'発電機容量',en:'Generator Capacity'},
+  'lbl_ups_cap':        {ja:'UPS容量',en:'UPS Capacity'},
+  'dyn_other_detail':   {ja:'その他 用途',en:'Other Usage'},
+  'lbl_use_note':       {ja:'用途の補足',en:'Usage Note'},
+  // DB section 2
+  'db_sec2_title':      {ja:'施工会社',en:'Contractors'},
+  'db_sec2_note':       {ja:'全用途共通・自由入力（過去入力から候補表示）',en:'All usages · Free input (suggestions from past entries)'},
+  'cg_arch':            {ja:'建築系',en:'Architecture'},
+  'cg_mep':             {ja:'設備系',en:'MEP'},
+  // DB section 3
+  'db_sec3_title':      {ja:'見積ファイル',en:'Estimate Files'},
+  'db_sec3_placeholder':{ja:'Excel / PDF をアップロード → AIで工種を抽出 → 確認・編集して保存（レビュー版では非動作）',en:'Upload Excel/PDF → AI extracts work items → Review, edit & save (Disabled in review edition)'},
+  // DB save
+  'btn_save':           {ja:'この案件を保存',en:'Save This Project'},
+  'db_save_note':       {ja:'PS Project ID が既存案件と同じ場合は、',en:'If the PS Project ID matches an existing project, '},
+  'db_save_note_b':     {ja:'2回目の取り込みを正',en:'the second import is treated as correct'},
+  'db_save_note_post':  {ja:'として上書き保存します（同一案件の重複登録を防ぎます）。',en:' and will overwrite (prevents duplicate registration).'},
+  // API view
+  'api_lead':           {ja:'見積のAI抽出に使う接続情報を入力します。検索・概算はこれが無くても動きます。',en:'Enter connection info for AI estimate extraction. Search & Estimate works without this.'},
+  'api_sec_title':      {ja:'JLL GPT API 接続設定',en:'JLL GPT API Connection Settings'},
+  'lbl_endpoint':       {ja:'エンドポイント',en:'Endpoint'},
+  'lbl_sub_key':        {ja:'サブスクリプションキー',en:'Subscription Key'},
+  'lbl_token':          {ja:'トークン（Oktaアクセストークン）',en:'Token (Okta Access Token)'},
+  'lbl_model':          {ja:'モデル名（リクエストbodyで送信）',en:'Model Name (sent in request body)'},
+  'btn_api_test':       {ja:'接続テスト',en:'Connection Test'},
+  'api_note':           {ja:'お試しトークンは約1時間で失効します。切れたら新しいトークンに貼り替えてください。モデル名はリクエスト本文（body）で送ります。入力値はこのセッションのメモリにのみ保持され、保存・ログ出力はしません。',en:'Trial tokens expire after ~1 hour. Replace with a new token when expired. Model name is sent in the request body. Input values are kept in session memory only — not saved or logged.'},
+  // Hit list
+  'dl_estimate':        {ja:'見積書をダウンロード',en:'Download Estimate'},
+  'dl_drawing':         {ja:'図面をダウンロード',en:'Download Drawings'},
+  'lbl_ref_source':     {ja:'参照元',en:'Source'},
+  'hits_more_pre':      {ja:'ほか ',en:''},
+  'hits_more_post':     {ja:' 件…',en:' more…'},
+  // Slider
+  'lbl_no_data':        {ja:'データなし',en:'No data'},
+  'lbl_median':         {ja:'中央値',en:'Median'},
+  // Estimate note
+  'est_note_pre':       {ja:'根拠案件数 ',en:'Based on '},
+  'est_note_mid1':      {ja:' 件 ／ 施工床面積 ',en:' projects / Construction floor area '},
+  'est_note_mid2':      {ja:'㎡ ／ 各区分の㎡単価はスライダーで調整可能（可動域は類似案件の最小〜最大）。',en:'㎡ / Unit prices per category are adjustable via sliders (range = min–max of similar cases).'},
+  // Chart axis
+  'axis_area':          {ja:'施工床面積(㎡)',en:'Construction Floor Area (㎡)'},
+  'axis_unit_price':    {ja:'㎡単価(円)',en:'Unit Price (¥/㎡)'},
+  'legend_regression':  {ja:'回帰曲線',en:'Regression Curve'},
+  'legend_estimate':    {ja:'概算結果',en:'Estimate'},
+  // Contractor items
+  'c_a1':               {ja:'A工事',en:'Category A Works'},
+  'c_b1':               {ja:'B工事',en:'Category B Works'},
+  'c_interior':         {ja:'内装工事',en:'Interior Works'},
+  'c_partition':        {ja:'パーティション',en:'Partition'},
+  'c_furniture_c':      {ja:'造作家具',en:'Custom Furniture'},
+  'c_furniture':        {ja:'家具',en:'Furniture'},
+  'c_arch_other':       {ja:'建築その他工事',en:'Other Arch. Works'},
+  'c_hvac_eq':          {ja:'空調設備',en:'HVAC Equipment'},
+  'c_plumb_eq':         {ja:'給排水衛生設備',en:'Plumbing Equipment'},
+  'c_fire_eq':          {ja:'消火設備',en:'Fire Protection Equip.'},
+  'c_elec_eq':          {ja:'電気設備',en:'Electrical Equipment'},
+  'c_lift_eq':          {ja:'昇降機設備',en:'Elevator Equipment'},
+  'c_security':         {ja:'セキュリティ設備',en:'Security Equipment'},
+  // Alert
+  'alert_out_of_range': {ja:'この案件は既存事例の表示件数の範囲外です（上位50件のみ表示）。検索条件を絞ると表示されます。',en:'This project is outside the display range (top 50 shown). Narrow your search criteria to view it.'},
+  // DB save messages
+  'msg_psid_required':  {ja:'✕ PS Project ID は必須です',en:'✕ PS Project ID is required'},
+  'msg_overwrite_pre':  {ja:'✓ 既存の PS Project ID ',en:'✓ Existing PS Project ID '},
+  'msg_overwrite_post': {ja:' を上書き保存しました（2回目を正）',en:' overwritten (2nd import treated as correct)'},
+  'msg_new_pre':        {ja:'✓ 新規案件として保存しました（PS Project ID ',en:'✓ Saved as new project (PS Project ID '},
+  'msg_new_post':       {ja:'）',en:')'},
+  // API messages
+  'api_testing':        {ja:'接続を確認中…',en:'Testing connection…'},
+  'api_ok':             {ja:'✓ 接続OK（',en:'✓ Connected ('},
+  'api_err_ep':         {ja:'✕ エンドポイントを入力してください',en:'✕ Please enter the endpoint'},
+  'api_err_keys':       {ja:'✕ サブスクリプションキーとトークンを入力してください',en:'✕ Please enter subscription key and token'},
+  'api_err_model':      {ja:'✕ モデル名を入力してください',en:'✕ Please enter the model name'},
+  'api_err_network':    {ja:'✕ ネットワークエラー：サーバーに接続できません。URL・ネットワークをご確認ください。',en:'✕ Network error: Cannot connect to server. Check URL and network.'},
+  'api_err_401':        {ja:'✕ 認証エラー（401）：トークンが失効/誤りの可能性があります',en:'✕ Auth error (401): Token may have expired or is incorrect'},
+  'api_err_403':        {ja:'✕ アクセス拒否（403）：サブスクリプションキーまたはURLをご確認ください',en:'✕ Access denied (403): Check subscription key or URL'},
+  'api_err_404':        {ja:'✕ エンドポイントが見つかりません（404）：URLをご確認ください',en:'✕ Endpoint not found (404): Check URL'},
+  'api_err_generic_pre':{ja:'✕ APIエラー（',en:'✕ API error ('},
+  'api_err_generic_post':{ja:'）',en:')'},
+  // Applied filters
+  'flt_use_pre':        {ja:'用途が「',en:'Usage = "'},
+  'flt_use_post':       {ja:'」と一致',en:'"'},
+  'flt_struct_pre':     {ja:'構造が「',en:'Structure = "'},
+  'flt_struct_post':    {ja:'」と一致',en:'"'},
+  'flt_area_range':     {ja:'施工床面積 ',en:'Floor area '},
+  'flt_none':           {ja:'フィルタ条件なし（全案件）',en:'No filter (all projects)'},
+  'flt_grade_pre':      {ja:'ビルグレード「',en:'Building grade "'},
+  'flt_hgrade_pre':     {ja:'ホテルグレード「',en:'Hotel grade "'},
+  'flt_type_pre':       {ja:'タイプ「',en:'Type "'},
+  'flt_mw_post':        {ja:'MW以上',en:'MW+'},
+  'flt_rack_post':      {ja:'以上',en:'+'},
+  'flt_close':          {ja:'」',en:'"'},
+  // Tooltip
+  'tip_area':           {ja:'延床',en:'GFA'},
+  'tip_click':          {ja:'クリックで既存事例へ',en:'Click to jump to case'},
+  // Compare view
+  'nav_compare':        {ja:'比較表',en:'Comparison'},
+  'ttl_compare':        {ja:'比較表',en:'Comparison Table'},
+  'cmp_lead':           {ja:'既存事例と今回PJの概算内訳を横並びで比較します。',en:'Compare cost breakdowns of existing cases and the current project estimate side by side.'},
+  'cmp_sec1':           {ja:'PJ名称・既存事例',en:'PJ Name & Existing Cases'},
+  'cmp_sec2':           {ja:'概算内訳 比較表',en:'Estimate Breakdown Comparison'},
+  'cmp_sec2_note':      {ja:'既存事例＝円/㎡単価 ｜ 今回PJ＝単価＋費用',en:'Existing = ¥/㎡ unit price | Current PJ = unit price + cost'},
+  'cmp_add_label':      {ja:'既存事例',en:'Existing Cases'},
+  'cmp_pjname_label':   {ja:'PJ名称',en:'PJ Name'},
+  'cmp_picker_default': {ja:'— 案件を選択 —',en:'— Select a project —'},
+  'cmp_add_btn':        {ja:'追加',en:'Add'},
+  'cmp_empty':          {ja:'左の検索画面で検索した後、ここで既存事例を追加して比較できます。',en:'Run a search first, then add cases here to compare.'},
+  'cmp_row_item':       {ja:'内訳項目',en:'Breakdown Item'},
+  'cmp_this_pj':        {ja:'○○PJ',en:'○○PJ'},
+  'cmp_direct':         {ja:'直接工事費',en:'Direct Cost'},
+  'cmp_common':         {ja:'共通仮設',en:'Common Temporary'},
+  'cmp_expense':        {ja:'経費',en:'Expenses'},
+  'cmp_subtotal':       {ja:'合計',en:'Subtotal'},
+  'cmp_tax':            {ja:'合計（税込）',en:'Total (incl. tax)'},
+  'cmp_up':             {ja:'㎡単価',en:'Unit Price/㎡'},
+  'cmp_area_label':     {ja:'施工床面積',en:'Constr. Floor Area'},
+  'cmp_this_pj_up':     {ja:'今回PJ 単価',en:'Current PJ ¥/㎡'},
+  'cmp_this_pj_cost':   {ja:'今回PJ 費用',en:'Current PJ Cost'},
+  'cmp_cost_k':         {ja:'費用（千円）',en:'Cost (¥K)'},
+};
+
+// Category name mapping for dynamic content
+const CAT_NAME_MAP={
+  ja:{arch:'建築工事',elec:'電気設備工事',hvac:'空調設備',plumb:'衛生設備',fire:'消火設備',lift:'昇降機設備工事',other:'その他工事',mech:'機械設備工事'},
+  en:{arch:'Architecture',elec:'Electrical',hvac:'HVAC',plumb:'Plumbing',fire:'Fire Protection',lift:'Elevator',other:'Other',mech:'Mechanical'}
+};
+const STRUCT_NAME_MAP={
+  ja:{RC造:'RC造',S造:'S造',SRC造:'SRC造',CFT造:'CFT造',木造:'木造',混構造:'混構造'},
+  en:{RC造:'RC',S造:'Steel',SRC造:'SRC',CFT造:'CFT',木造:'Wood',混構造:'Hybrid'}
+};
+const USE_NAME_MAP={
+  ja:{オフィス:'オフィス',ホテル:'ホテル',データセンター:'データセンター',その他:'その他'},
+  en:{オフィス:'Office',ホテル:'Hotel',データセンター:'Data Center',その他:'Other'}
+};
+
+function t(key){return (T[key]&&T[key][currentLang])||key;}
+
+function applyLanguage(){
+  const lang=currentLang;
+  // Toggle buttons
+  document.querySelectorAll('#langToggle button').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));
+  // Title
+  document.title=lang==='ja'?'検索・概算ツール — レビュー版':'Search & Estimate Tool — Review Edition';
+  // HTML lang
+  document.documentElement.lang=lang==='ja'?'ja':'en';
+  // Sidebar
+  document.querySelector('.brand h1').textContent=t('brand_title');
+  document.querySelector('.brand .sub').textContent=t('brand_sub');
+  const navBtns=document.querySelectorAll('#nav button');
+  navBtns[0].textContent=t('nav_search');
+  navBtns[1].textContent=t('nav_compare');
+  document.querySelector('.sidebar .foot').textContent=t('sidebar_foot');
+  // Topbar
+  const activeNav=document.querySelector('#nav button.active');
+  if(activeNav){
+    const v=activeNav.dataset.v;
+    document.getElementById('ttl').textContent=t('ttl_'+v);
+  }
+  document.querySelector('.topbar .badge').textContent=t('badge');
+  // Update TITLES for nav switching
+  TITLES.search=t('ttl_search');TITLES.compare=t('ttl_compare');
+
+  // Search view — Section 1
+
+  // Section headers
+  const secHeads=document.querySelectorAll('#view-search .sec-head h3');
+  if(secHeads[0])secHeads[0].textContent=t('sec1_title');
+
+  // Labels in search form
+  const s_use_lbl=document.querySelector('#s_use').closest('.fld').querySelector('label');
+  if(s_use_lbl)s_use_lbl.textContent=t('lbl_use');
+  const s_struct_lbl=document.querySelector('#s_struct').closest('.fld').querySelector('label');
+  if(s_struct_lbl)s_struct_lbl.textContent=t('lbl_struct');
+  const s_area_lbl=document.querySelector('#s_area').closest('.fld').querySelector('label');
+  if(s_area_lbl)s_area_lbl.innerHTML=t('lbl_area')+'<span class="req">'+t('lbl_area_req')+'</span>';
+
+  // Select options — Usage
+  const sUse=document.getElementById('s_use');
+  const sUseVal=sUse.value;
+  sUse.options[0].textContent=t('use_all');
+  sUse.options[1].textContent=t('use_office');
+  sUse.options[2].textContent=t('use_hotel');
+  sUse.options[3].textContent=t('use_dc');
+  sUse.options[4].textContent=t('use_other');
+
+  // Select options — Structure
+  const sStruct=document.getElementById('s_struct');
+  sStruct.options[0].textContent=t('struct_all');
+  sStruct.options[1].textContent=lang==='ja'?'RC造':'RC';
+  sStruct.options[2].textContent=lang==='ja'?'S造':'Steel';
+  sStruct.options[3].textContent=lang==='ja'?'SRC造':'SRC';
+  sStruct.options[4].textContent=lang==='ja'?'CFT造':'CFT';
+  sStruct.options[5].textContent=lang==='ja'?'木造':'Wood';
+  sStruct.options[6].textContent=lang==='ja'?'混構造':'Hybrid';
+
+  // Checkboxes
+  document.querySelector('#s_muse').closest('.fld.check').querySelector('label').textContent=t('chk_use');
+  document.querySelector('#s_mstruct').closest('.fld.check').querySelector('label').textContent=t('chk_struct');
+  document.querySelector('#s_marea').closest('.fld.check').querySelector('label').textContent=t('chk_area');
+
+  // Dynamic blocks — search detail
+  const dynTitles=document.querySelectorAll('#searchDetail .dyn-title');
+  if(dynTitles[0])dynTitles[0].textContent=t('dyn_office');
+  if(dynTitles[1])dynTitles[1].textContent=t('dyn_hotel');
+  if(dynTitles[2])dynTitles[2].textContent=t('dyn_dc');
+
+  // Search detail labels
+  const sdOfGrade=document.getElementById('sd_of_grade');
+  if(sdOfGrade){sdOfGrade.closest('.fld').querySelector('label').textContent=t('lbl_bldg_grade');
+    sdOfGrade.options[0].textContent=t('use_all');}
+  const sdHoGrade=document.getElementById('sd_ho_grade');
+  if(sdHoGrade){sdHoGrade.closest('.fld').querySelector('label').textContent=t('lbl_grade');
+    sdHoGrade.options[0].textContent=t('use_all');}
+  const sdHoType=document.getElementById('sd_ho_type');
+  if(sdHoType){sdHoType.closest('.fld').querySelector('label').textContent=t('lbl_type');
+    sdHoType.options[0].textContent=t('use_all');}
+  const sdDcMw=document.getElementById('sd_dc_mwmin');
+  if(sdDcMw)sdDcMw.closest('.fld').querySelector('label').innerHTML=t('lbl_dc_mw')+'<span class="opt">MW</span>';
+  const sdDcRack=document.getElementById('sd_dc_rackmin');
+  if(sdDcRack)sdDcRack.closest('.fld').querySelector('label').textContent=t('lbl_dc_rack');
+
+  // Search button
+  document.getElementById('searchBtn').textContent=t('btn_search');
+
+  // Results section headers
+  const resSecs=document.querySelectorAll('#results .sec-head h3');
+  if(resSecs[0])resSecs[0].textContent=t('sec2_title');
+  if(resSecs[1])resSecs[1].textContent=t('sec3_title');
+  if(resSecs[2])resSecs[2].textContent=t('sec4_title');
+  if(resSecs[3])resSecs[3].textContent=t('sec5_title');
+  const resNotes=document.querySelectorAll('#results .sec-head .note');
+  if(resNotes[1])resNotes[1].textContent=t('sec3_note');
+  // Total label
+  const totalLbl=document.querySelector('.total-card .l');
+  if(totalLbl)totalLbl.textContent=t('total_label');
+  // Graph label
+  const graphLabel=document.querySelector('.chart-head label');
+  if(graphLabel)graphLabel.textContent=t('lbl_graph_cat');
+  // Toggle all button
+  if(typeof setToggleIcon==='function'){
+    const cards=[...document.querySelectorAll('#hitList .pj')];
+    const anyClosed=cards.some(p=>!p.classList.contains('open'));
+    setToggleIcon(!anyClosed);
+  }
+
+
+  // Compare view
+  const cmpLead=document.getElementById('cmp-lead');
+  if(cmpLead)cmpLead.textContent=t('cmp_lead');
+  const cmpS1=document.getElementById('cmp-sec1-title');
+  if(cmpS1)cmpS1.textContent=t('cmp_sec1');
+  const cmpS2=document.getElementById('cmp-sec2-title');
+  if(cmpS2)cmpS2.textContent=t('cmp_sec2');
+  const cmpS2n=document.getElementById('cmp-sec2-note');
+  if(cmpS2n)cmpS2n.textContent=t('cmp_sec2_note');
+  const cmpPjNameL=document.getElementById('cmp-pjname-label');
+  if(cmpPjNameL)cmpPjNameL.textContent=t('cmp_pjname_label');
+  const cmpAddL=document.getElementById('cmp-add-label');
+  if(cmpAddL)cmpAddL.textContent=t('cmp_add_label');
+  const cmpAddB=document.getElementById('cmpAddBtn');
+  if(cmpAddB)cmpAddB.textContent=t('cmp_add_btn');
+  const cmpPicker=document.getElementById('cmpPicker');
+  if(cmpPicker&&cmpPicker.options[0])cmpPicker.options[0].textContent=t('cmp_picker_default');
+  // Re-render compare table
+  renderCompareTable();
+
+  // Re-render dynamic content (graph cat options, hit list, sliders, estimate) if state exists
+  if(state){
+    renderGraphCatOptions_i18n();
+    renderHitList();
+    renderSliders();
+    renderEstimate();
+    drawPlot();
+    renderLegend_i18n();
+  }
+}
+
+// Override renderGraphCatOptions for i18n
+function renderGraphCatOptions_i18n(){
+  const sel=document.getElementById('graphCat');
+  sel.innerHTML='<option value="total">'+t('cat_total')+'</option>'+DISP_CATS.map(c=>`<option value="${c.key}">${CAT_NAME_MAP[currentLang][c.key]||c.name}</option>`).join('');
+  sel.onchange=()=>{drawPlot();renderLegend_i18n();};
+}
+function renderLegend_i18n(){
+  const el=document.getElementById('legend');
+  el.innerHTML=STRUCTS.map(s=>`<span class="item"><span class="mk" style="background:${s.c}"></span>${STRUCT_NAME_MAP[currentLang][s.k]||s.k}</span>`).join('')
+    +`<span class="item"><span class="mk" style="border-top:2px dashed #7d8ba0;width:18px;height:0;border-radius:0"></span>${t('legend_regression')}</span>`
+    +`<span class="item"><span class="star">★</span>${t('legend_estimate')}</span>`;
+}
+
+// Patch renderEstimate for i18n
+const _origRenderEstimate=renderEstimate;
+renderEstimate=function(){
+  const area=state.area;const box=document.getElementById('estCards');box.innerHTML='';
+  let total=null;
+  CATS.forEach(c=>{
+    const up=state.chosen[c.key];
+    const cost=(up&&area>0)?up*area:null;
+    if(cost!=null)total=(total||0)+cost;
+    const rc=document.createElement('div');rc.className='rc';rc.style.borderLeftColor=c.color;
+    rc.innerHTML=`<div class="l">${CAT_NAME_MAP[currentLang][c.key]}</div><div class="v">${fmt(cost)}</div>`;
+    box.appendChild(rc);
+  });
+  document.getElementById('estTotal').textContent=fmt(total);
+  document.getElementById('estNote').textContent=
+    t('est_note_pre')+state.hits.length+t('est_note_mid1')+area.toLocaleString()+t('est_note_mid2');
+  // Keep total label
+  const totalLbl=document.querySelector('.total-card .l');
+  if(totalLbl)totalLbl.textContent=t('total_label');
+  if(typeof renderCompareTable==='function')renderCompareTable();
+};
+
+// Patch renderSliders for i18n
+const _origRenderSliders=renderSliders;
+renderSliders=function(){
+  const box=document.getElementById('sliders');box.innerHTML='';
+  CATS.forEach(c=>{
+    const s=state.stats[c.key];
+    const catName=CAT_NAME_MAP[currentLang][c.key];
+    const wrap=document.createElement('div');
+    wrap.className='slider'+(s.n===0?' disabled':'');
+    if(s.n===0){
+      wrap.innerHTML=`<div class="top"><span class="nm"><span class="dot" style="background:${c.color}"></span>${catName}</span><span class="val">—</span></div>
+        <div class="meta">${t('lbl_no_data')}</div><input type="range" disabled>`;
+      box.appendChild(wrap);return;
+    }
+    const lo=Math.floor(s.min),hi=Math.ceil(s.max),val=Math.round(state.chosen[c.key]);
+    wrap.innerHTML=`
+      <div class="top"><span class="nm"><span class="dot" style="background:${c.color}"></span>${catName}</span>
+        <span class="val" id="val_${c.key}" style="color:${c.color}">¥${val.toLocaleString()}/㎡</span></div>
+      <div class="meta">n=${s.n}　<span class="reset-median" data-cat="${c.key}" title="${t('lbl_median')}">${t('lbl_median')} ¥${Math.round(s.median).toLocaleString()}</span></div>
+      <input type="range" min="${lo}" max="${hi}" value="${val}" step="${Math.max(100,Math.round((hi-lo)/200))}" id="rng_${c.key}">
+      <div class="scale"><span>¥${lo.toLocaleString()}</span><span>¥${hi.toLocaleString()}</span></div>`;
+    box.appendChild(wrap);
+    const rng=wrap.querySelector('input');
+    rng.addEventListener('input',e=>{
+      state.chosen[c.key]=parseFloat(e.target.value);
+      document.getElementById('val_'+c.key).textContent='¥'+Math.round(state.chosen[c.key]).toLocaleString()+'/㎡';
+      renderEstimate();drawPlot();
+    });
+    wrap.querySelector('.reset-median').addEventListener('click',()=>{
+      state.chosen[c.key]=s.median;
+      rng.value=Math.round(s.median);
+      document.getElementById('val_'+c.key).textContent='¥'+Math.round(s.median).toLocaleString()+'/㎡';
+      renderEstimate();drawPlot();
+    });
+  });
+};
+
+// Patch renderHitList for i18n
+const _origRenderHitList=renderHitList;
+renderHitList=function(){
+  const L=currentLang;
+  const box=document.getElementById('hitList');
+  box.innerHTML=state.hits.slice(0,50).map((p,i)=>{
+    const total=Math.round(CATS.reduce((a,c)=>a+p.catCosts[c.key],0));
+    const cells=CATS.map(c=>`<div class="up-cell" style="border-top-color:${c.color}">
+        <div class="k">${CAT_NAME_MAP[L][c.key]}</div><div class="v">¥${Math.round(p.catCosts[c.key]/p.area).toLocaleString()}</div></div>`).join('');
+    const srcs=[...new Set(p.items.map(it=>it.source))].join(', ');
+    const useName=USE_NAME_MAP[L][p.use]||p.use;
+    const structName=STRUCT_NAME_MAP[L][p.structure]||p.structure;
+    const open=false;
+    // Work type translation
+    const wtMap={ja:{新築:'新築',増築:'増築',改修:'改修',その他:'その他'},en:{新築:'New',増築:'Expansion',改修:'Renovation',その他:'Other'}};
+    const btMap={ja:{設計:'設計',施工:'施工',設計施工:'設計施工',CM:'CM'},en:{設計:'Design',施工:'Construction',設計施工:'Design & Build',CM:'CM'}};
+
+    // Detail attributes by usage
+    let usageDetail='';
+    if(p.use==='オフィス'&&p.detail){
+      if(p.detail.grade)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'ビルグレード':'Building Grade'}</div><div class="v">${p.detail.grade}</div></div>`;
+      if(p.detail.seats)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'座席数':'Seats'}</div><div class="v">${p.detail.seats.toLocaleString()} ${L==='ja'?'席':'seats'}</div></div>`;
+      if(p.detail.meeting_rooms)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'会議室数':'Meeting Rooms'}</div><div class="v">${p.detail.meeting_rooms} ${L==='ja'?'室':'rooms'}</div></div>`;
+    } else if(p.use==='ホテル'&&p.detail){
+      const htTypeMap={ja:{クラシック:'クラシック',ライフスタイル:'ライフスタイル',コレクション:'コレクション'},en:{クラシック:'Classic',ライフスタイル:'Lifestyle',コレクション:'Collection'}};
+      if(p.detail.grade)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'ホテルグレード':'Hotel Grade'}</div><div class="v">${p.detail.grade}</div></div>`;
+      if(p.detail.type)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'タイプ':'Type'}</div><div class="v">${(htTypeMap[L]||{})[p.detail.type]||p.detail.type}</div></div>`;
+      if(p.detail.star)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'星':'Stars'}</div><div class="v">${p.detail.star}</div></div>`;
+      if(p.detail.service_type)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'サービスタイプ':'Service Type'}</div><div class="v">${p.detail.service_type}</div></div>`;
+      if(p.detail.brand)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'ブランド':'Brand'}</div><div class="v">${p.detail.brand}</div></div>`;
+      if(p.detail.rooms)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'客室施工数':'Rooms'}</div><div class="v">${p.detail.rooms.toLocaleString()} ${L==='ja'?'室':'rooms'}</div></div>`;
+    } else if(p.use==='データセンター'&&p.detail){
+      if(p.detail.mw)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'最大受電電力':'Max Power'}</div><div class="v">${p.detail.mw} MW</div></div>`;
+      if(p.detail.racks)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'ラック数':'Racks'}</div><div class="v">${p.detail.racks.toLocaleString()}</div></div>`;
+      if(p.detail.it_load)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'IT負荷':'IT Load'}</div><div class="v">${p.detail.it_load.toLocaleString()} kVA</div></div>`;
+      if(p.detail.hv_transformer)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'高圧変圧器容量':'HV Transformer'}</div><div class="v">${p.detail.hv_transformer.toLocaleString()} kVA</div></div>`;
+      if(p.detail.generator)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'発電機容量':'Generator'}</div><div class="v">${p.detail.generator.toLocaleString()} kVA</div></div>`;
+      if(p.detail.ups)usageDetail+=`<div class="pj-info-cell"><div class="k">${L==='ja'?'UPS容量':'UPS'}</div><div class="v">${p.detail.ups.toLocaleString()} kVA</div></div>`;
+    }
+
+    // Items table (工種明細)
+    const catColor=k=>(CATS.find(c=>c.key===k)||{color:'#8896a8'}).color;
+    const itemRows=p.items.map(it=>`<tr>
+      <td><span class="cat-badge" style="background:${catColor(it.cat)}">${CAT_NAME_MAP[L][it.cat]||it.cat}</span></td>
+      <td>${it.name}</td>
+      <td class="amt">${it.qty.toLocaleString()}</td>
+      <td>${it.unit}</td>
+      <td class="amt">¥${it.unit_price.toLocaleString()}</td>
+      <td class="amt">¥${it.amount.toLocaleString()}</td>
+      <td><span class="${it.check==='ok'?'check-ok':'check-ng'}">${it.check==='ok'?'OK':'NG'}</span></td>
+    </tr>`).join('');
+
+    return `<div class="pj${open?' open':''}" data-pj="${p.id}">
+      <div class="pj-head">
+        <span class="pj-chev">▸</span>
+        <div class="pj-main">
+          <div class="pj-name">${p.name}</div>
+          <div class="pj-meta">${useName}<span class="sep">|</span>${structName}<span class="sep">|</span>${p.area.toLocaleString()}㎡<span class="sep">|</span>${L==='ja'?'総工事費':'Total'} <span class="pj-total">¥${total.toLocaleString()}</span></div>
+        </div>
+      </div>
+      <div class="pj-detail">
+        <div class="pj-info">
+          <div class="pj-info-cell"><div class="k">PS Project ID</div><div class="v">${p.psid||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'所在地':'Location'}</div><div class="v">${p.location||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'クライアント':'Client'}</div><div class="v">${p.client||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'用途':'Usage'}</div><div class="v">${useName}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'構造':'Structure'}</div><div class="v">${structName}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'竣工引渡年':'Completion'}</div><div class="v">${p.completion_year||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'工事区分':'Work Type'}</div><div class="v">${(wtMap[L]||{})[p.work_type]||p.work_type||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'業務区分':'Business Type'}</div><div class="v">${(btMap[L]||{})[p.biz_type]||p.biz_type||'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'敷地面積':'Site Area'}</div><div class="v">${p.site_area?p.site_area.toLocaleString()+'㎡':'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'建築面積':'Building Area'}</div><div class="v">${p.building_area?p.building_area.toLocaleString()+'㎡':'—'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'施工床面積':'Constr. Floor'}</div><div class="v">${p.area.toLocaleString()}㎡</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'地上':'Above Ground'}</div><div class="v">${p.floors_above||'—'}${L==='ja'?'階':'F'}</div></div>
+          <div class="pj-info-cell"><div class="k">${L==='ja'?'地下':'Below Ground'}</div><div class="v">${p.floors_below||0}${L==='ja'?'階':'F'}</div></div>
+          ${usageDetail}
+        </div>
+
+        ${p.contractors?`<div class="pj-detail-section">
+          <div class="dt">${L==='ja'?'施工会社':'Contractors'}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 22px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.3px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line-2)">${L==='ja'?'建築系':'Architecture'}</div>
+              <div class="pj-info" style="grid-template-columns:1fr 1fr">
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'A工事':'Cat. A Works'}</div><div class="v">${p.contractors.a_work||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'B工事':'Cat. B Works'}</div><div class="v">${p.contractors.b_work||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'内装工事':'Interior'}</div><div class="v">${p.contractors.interior||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'パーティション':'Partition'}</div><div class="v">${p.contractors.partition||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'造作家具':'Custom Furn.'}</div><div class="v">${p.contractors.custom_furniture||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'家具':'Furniture'}</div><div class="v">${p.contractors.furniture||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'建築その他':'Arch. Other'}</div><div class="v">${p.contractors.arch_other||'—'}</div></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.3px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line-2)">${L==='ja'?'設備系':'MEP'}</div>
+              <div class="pj-info" style="grid-template-columns:1fr 1fr">
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'空調設備':'HVAC'}</div><div class="v">${p.contractors.hvac||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'給排水衛生設備':'Plumbing'}</div><div class="v">${p.contractors.plumb||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'消火設備':'Fire Prot.'}</div><div class="v">${p.contractors.fire||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'電気設備':'Electrical'}</div><div class="v">${p.contractors.elec||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'昇降機設備':'Elevator'}</div><div class="v">${p.contractors.lift||'—'}</div></div>
+                <div class="pj-info-cell"><div class="k">${L==='ja'?'セキュリティ設備':'Security'}</div><div class="v">${p.contractors.security||'—'}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>`:''}
+
+        <div class="pj-detail-section">
+          <div class="dt">${L==='ja'?'区分別 ㎡単価':'Unit Price by Category'}</div>
+          <div class="up-grid">${cells}</div>
+        </div>
+
+        <div class="pj-detail-section">
+          <div class="dt">${L==='ja'?'工種明細':'Work Item Breakdown'}</div>
+          <table class="pj-items-table">
+            <thead><tr>
+              <th>${L==='ja'?'区分':'Category'}</th>
+              <th>${L==='ja'?'工種名':'Work Item'}</th>
+              <th style="text-align:right">${L==='ja'?'数量':'Qty'}</th>
+              <th>${L==='ja'?'単位':'Unit'}</th>
+              <th style="text-align:right">${L==='ja'?'単価':'U/Price'}</th>
+              <th style="text-align:right">${L==='ja'?'金額':'Amount'}</th>
+              <th>${L==='ja'?'検算':'Check'}</th>
+            </tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+        </div>
+
+        <div class="pj-dl" style="margin-top:14px">
+          <button class="dlbtn" data-dl-est="${p.id}"><span class="ic">⬇</span>${t('dl_estimate')}</button>
+          <button class="dlbtn" data-dl-dwg="${p.id}"><span class="ic">⬇</span>${t('dl_drawing')}</button>
+        </div>
+        <div class="pj-src">${t('lbl_ref_source')}: ${srcs}</div>
+      </div>
+    </div>`;
+  }).join('')+(state.hits.length>50?`<div class="pj-meta" style="text-align:center;padding:6px">${t('hits_more_pre')}${state.hits.length-50}${t('hits_more_post')}</div>`:'');
+  box.querySelectorAll('.pj-head').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
+  box.querySelectorAll('[data-dl-est]').forEach(b=>b.onclick=e=>{e.stopPropagation();downloadEstimate(+b.dataset.dlEst);});
+  box.querySelectorAll('[data-dl-dwg]').forEach(b=>b.onclick=e=>{e.stopPropagation();downloadDrawing(+b.dataset.dlDwg);});
+};
+
+// Patch drawPlot axis labels for i18n
+const _origDrawPlot=drawPlot;
+drawPlot=function(){
+  const cat=document.getElementById('graphCat').value;
+  const pts=DATA.map(p=>({x:p.area,y:unitPriceOf(p,cat),s:p.structure,name:p.name,id:p.id,use:p.use,area:p.area,structure:p.structure}));
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xMin=Math.min(...xs)*0.8,xMax=Math.max(...xs)*1.15;
+  let yMax=Math.max(...ys)*1.12;
+  let est=null;const area=state.area;
+  if(area>0){
+    const up=cat==='total'?Object.values(state.chosen).reduce((a,b)=>a+(b||0),0):cat==="mech"?((state.chosen.hvac||0)+(state.chosen.plumb||0)+(state.chosen.fire||0)):state.chosen[cat];
+    if(up){est={x:area,y:up};yMax=Math.max(yMax,up*1.1);}
+  }
+  const lx=v=>Math.log10(v);
+  const sx=v=>PAD.l+(lx(v)-lx(xMin))/(lx(xMax)-lx(xMin))*(W-PAD.l-PAD.r);
+  const sy=v=>H-PAD.b-(v/yMax)*(H-PAD.t-PAD.b);
+  ctx.clearRect(0,0,W,H);
+  ctx.font='22px "Spline Sans Mono",monospace';ctx.textBaseline='middle';
+  const yStep=Math.pow(10,Math.floor(Math.log10(yMax)))/2||100000;
+  for(let v=0;v<=yMax;v+=yStep){const y=sy(v);ctx.strokeStyle='#e4ebf3';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    ctx.fillStyle='#8896a8';ctx.textAlign='right';ctx.fillText('¥'+Math.round(v).toLocaleString(),PAD.l-14,y);}
+  ctx.textAlign='center';
+  [1000,2000,5000,10000,20000,50000,100000].forEach(t=>{if(t<xMin||t>xMax)return;const x=sx(t);
+    ctx.strokeStyle='#edf2f8';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();
+    ctx.fillStyle='#8896a8';ctx.textBaseline='top';ctx.fillText(t.toLocaleString(),x,H-PAD.b+10);ctx.textBaseline='middle';});
+  ctx.fillStyle='#48566a';ctx.font='600 22px "Zen Kaku Gothic New"';ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText(T['axis_area'][currentLang],(PAD.l+W-PAD.r)/2,H-PAD.b+40);
+  ctx.save();ctx.translate(36,(PAD.t+H-PAD.b)/2);ctx.rotate(-Math.PI/2);ctx.textBaseline='middle';ctx.fillText(T['axis_unit_price'][currentLang],0,0);ctx.restore();
+  if(pts.length>=5){
+    const lxs=xs.map(lx);const co=polyfit2(lxs,ys);const resid=ys.map((y,i)=>y-poly2(co,lxs[i]));
+    const sd=Math.sqrt(resid.reduce((a,b)=>a+b*b,0)/resid.length);
+    const draw=(off,w,dash)=>{ctx.beginPath();let f=true;
+      for(let px=PAD.l;px<=W-PAD.r;px+=6){const v=Math.pow(10,lx(xMin)+(px-PAD.l)/(W-PAD.l-PAD.r)*(lx(xMax)-lx(xMin)));
+        const y=sy(Math.max(0,poly2(co,lx(v))+off));if(f){ctx.moveTo(px,y);f=false;}else ctx.lineTo(px,y);}
+      ctx.strokeStyle=dash?'#b4bdca':'#7d8ba0';ctx.lineWidth=w;if(dash)ctx.setLineDash([5,5]);else ctx.setLineDash([]);ctx.stroke();ctx.setLineDash([]);};
+    draw(sd,2,true);draw(0,3.5,false);draw(-sd,2,true);
+  }
+  plotPts=[];
+  pts.forEach(p=>{const x=sx(p.x),y=sy(p.y);const col=(STRUCTS.find(s=>s.k===p.s)||{c:'#8896a8'}).c;
+    ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fillStyle=col;ctx.globalAlpha=.8;ctx.fill();ctx.globalAlpha=1;
+    plotPts.push({px:x,py:y,p});});
+  if(est){const x=sx(est.x),y=sy(est.y);star(x,y,17,'#e0492e');}
+};
+
+// Patch tooltip for i18n
+cv.removeEventListener('mousemove',cv._i18nMM);
+cv._i18nMM=function(e){
+  const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+  let best=null,bd=1e9;plotPts.forEach(o=>{const d=(o.px-mx)**2+(o.py-my)**2;if(d<bd){bd=d;best=o;}});
+  if(best&&bd<500){tip.style.opacity=1;tip.style.left=(best.px/W*r.width+12)+'px';tip.style.top=(best.py/H*r.height-10)+'px';
+    const useName=USE_NAME_MAP[currentLang][best.p.use]||best.p.use;
+    const structName=STRUCT_NAME_MAP[currentLang][best.p.structure]||best.p.structure;
+    tip.innerHTML=`<div>${best.p.name}</div><div>${structName}・${useName}</div><div>${T['tip_area'][currentLang]} <b>${best.p.area.toLocaleString()}㎡</b></div><div style="color:#9fd0ff;margin-top:3px">${T['tip_click'][currentLang]}</div>`;
+    cv.style.cursor='pointer';}
+  else {tip.style.opacity=0;cv.style.cursor='default';}
+};
+cv.addEventListener('mousemove',cv._i18nMM);
+
+// Patch jumpToCase alert
+const _origJumpToCase=jumpToCase;
+jumpToCase=function(id){
+  const card=document.querySelector('#hitList .pj[data-pj="'+id+'"]');
+  if(!card){alert(T['alert_out_of_range'][currentLang]);return;}
+  card.classList.add('open');
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  card.classList.add('flash');
+  setTimeout(()=>card.classList.remove('flash'),1600);
+};
+
+// Patch toggleAll
+const ICON_EXPAND='<polyline points="7 8 12 3 17 8"></polyline><polyline points="7 16 12 21 17 16"></polyline>';
+const ICON_COLLAPSE='<polyline points="7 3 12 8 17 3"></polyline><polyline points="7 21 12 16 17 21"></polyline>';
+function setToggleIcon(expanded){
+  const svg=document.getElementById('toggleIcon');
+  if(svg)svg.innerHTML=expanded?ICON_COLLAPSE:ICON_EXPAND;
+  const btn=document.getElementById('toggleAll');
+  if(btn)btn.title=expanded?(currentLang==='ja'?'折りたたむ':'Collapse'):(currentLang==='ja'?'展開':'Expand');
+}
+document.getElementById('toggleAll').onclick=function(){
+  const cards=[...document.querySelectorAll('#hitList .pj')];
+  const anyClosed=cards.some(p=>!p.classList.contains('open'));
+  cards.forEach(p=>p.classList.toggle('open',anyClosed));
+  setToggleIcon(anyClosed);
+};
+
+
+// Patch nav click for i18n title
+document.querySelectorAll('#nav button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+b.dataset.v).classList.add('active');
+    document.getElementById('ttl').textContent=TITLES[b.dataset.v];
+  };
+});
+
+// Language toggle click handler
+document.querySelectorAll('#langToggle button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.lang===currentLang)return;
+  currentLang=b.dataset.lang;
+  applyLanguage();
+});
+
+//================= 比較表 =================
+let cmpSelected=[];
+
+const ARCH_SUB_RATIOS={
+  arch_temp:0.032, arch_earth:0.039, arch_found:0.087,
+  arch_rebar:0.075, arch_conc:0.065, arch_form:0.045, arch_steel:0.120,
+  arch_wp:0.025, arch_stone:0.015, arch_metal:0.030,
+  arch_plaster:0.012, arch_door:0.060, arch_cw:0.035,
+  arch_paint:0.018, arch_finish:0.080, arch_unit:0.022,
+  arch_scrap:0.008,
+};
+// Electric sub-ratios (within elec total)
+const ELEC_SUB_RATIOS={elec_light:0.30,elec_power:0.20,elec_hv:0.22,elec_trunk:0.12,elec_comm:0.10,elec_fire:0.06};
+// Mechanical sub-ratios (hvac+plumb+fire combined into mech)
+const MECH_SUB_RATIOS={mech_hvac:0.40,mech_vent:0.10,mech_smoke:0.04,mech_sanitary:0.08,mech_water:0.06,mech_drain:0.06,mech_hw:0.04,mech_fire:0.12,mech_gas:0.03,mech_other:0.07};
+
+const BREAKDOWN_ROWS=[
+  // === 建築工事 ===
+  {key:'arch_temp',  grp:'arch',sub:true, ja:'直接仮設',           en:'Temporary Works'},
+  {key:'arch_earth', grp:'arch',sub:true, ja:'土工',               en:'Earthwork'},
+  {key:'arch_found', grp:'arch',sub:true, ja:'地業',               en:'Foundation'},
+  {key:'arch_rebar', grp:'arch',sub:true, ja:'鉄筋',               en:'Rebar'},
+  {key:'arch_conc',  grp:'arch',sub:true, ja:'コンクリート',       en:'Concrete'},
+  {key:'arch_form',  grp:'arch',sub:true, ja:'型枠',               en:'Formwork'},
+  {key:'arch_steel', grp:'arch',sub:true, ja:'鉄骨',               en:'Structural Steel'},
+  {key:'arch_wp',    grp:'arch',sub:true, ja:'防水',               en:'Waterproofing'},
+  {key:'arch_stone', grp:'arch',sub:true, ja:'石・タイル',         en:'Stone & Tile'},
+  {key:'arch_metal', grp:'arch',sub:true, ja:'金属',               en:'Metalwork'},
+  {key:'arch_plaster',grp:'arch',sub:true,ja:'左官',               en:'Plastering'},
+  {key:'arch_door',  grp:'arch',sub:true, ja:'建具',               en:'Doors & Windows'},
+  {key:'arch_cw',    grp:'arch',sub:true, ja:'カーテンウォール',   en:'Curtain Wall'},
+  {key:'arch_paint', grp:'arch',sub:true, ja:'塗装',               en:'Painting'},
+  {key:'arch_finish',grp:'arch',sub:true, ja:'内外装',             en:'Interior & Exterior'},
+  {key:'arch_unit',  grp:'arch',sub:true, ja:'ユニット及びその他', en:'Unit & Others'},
+  {key:'arch_scrap', grp:'arch',sub:true, ja:'発生材処理',         en:'Waste Disposal'},
+  {key:'arch_total', grp:'arch',sub:false,ja:'建築工事',           en:'Architecture',isTotal:true},
+  // === 電気設備工事 ===
+  {key:'elec_light', grp:'elec',sub:true, ja:'電灯設備',           en:'Lighting'},
+  {key:'elec_power', grp:'elec',sub:true, ja:'動力設備',           en:'Power'},
+  {key:'elec_hv',    grp:'elec',sub:true, ja:'受変電設備',         en:'HV Transformer'},
+  {key:'elec_trunk', grp:'elec',sub:true, ja:'幹線設備',           en:'Trunk Lines'},
+  {key:'elec_comm',  grp:'elec',sub:true, ja:'通信・情報設備',     en:'Telecom & IT'},
+  {key:'elec_fire',  grp:'elec',sub:true, ja:'火災報知等',         en:'Fire Alarm'},
+  {key:'elec_total', grp:'elec',sub:false,ja:'電気設備工事',       en:'Electrical',isTotal:true},
+  // === 機械設備工事 ===
+  {key:'mech_hvac',     grp:'mech',sub:true, ja:'空気調和設備',     en:'Air Conditioning'},
+  {key:'mech_vent',     grp:'mech',sub:true, ja:'換気設備',         en:'Ventilation'},
+  {key:'mech_smoke',    grp:'mech',sub:true, ja:'排煙設備',         en:'Smoke Exhaust'},
+  {key:'mech_sanitary', grp:'mech',sub:true, ja:'衛生器具設備',     en:'Sanitary Fixtures'},
+  {key:'mech_water',    grp:'mech',sub:true, ja:'給水設備',         en:'Water Supply'},
+  {key:'mech_drain',    grp:'mech',sub:true, ja:'排水設備',         en:'Drainage'},
+  {key:'mech_hw',       grp:'mech',sub:true, ja:'給湯設備',         en:'Hot Water Supply'},
+  {key:'mech_fire',     grp:'mech',sub:true, ja:'消火設備',         en:'Fire Extinguishing'},
+  {key:'mech_gas',      grp:'mech',sub:true, ja:'ガス設備',         en:'Gas'},
+  {key:'mech_other',    grp:'mech',sub:true, ja:'その他機械設備',   en:'Other Mechanical'},
+  {key:'mech_total',    grp:'mech',sub:false,ja:'機械設備工事',     en:'Mechanical',isTotal:true},
+  // === 昇降機設備工事 ===
+  {key:'lift_total',    grp:'lift',sub:false,ja:'昇降機設備工事',   en:'Elevator',isTotal:true},
+];
+
+function getSubBreakdown(proj,ratios,totalCost){
+  const r={};let sum=0;
+  const keys=Object.keys(ratios);
+  keys.forEach((k,i)=>{const base=ratios[k];const seed=Math.sin(proj.id*137.5+i*31.7)*0.15;r[k]=Math.max(0.005,base*(1+seed));sum+=r[k];});
+  keys.forEach(k=>{r[k]=Math.round(totalCost*r[k]/sum);});
+  // fix rounding on largest item
+  const diff=totalCost-keys.reduce((a,k)=>a+r[k],0);
+  const largest=keys.reduce((a,b)=>r[a]>r[b]?a:b);
+  r[largest]+=diff;
+  return r;
+}
+
+function getCellValue(proj,rowKey){
+  // Arch sub-items
+  if(rowKey.startsWith('arch_')&&rowKey!=='arch_total')return getSubBreakdown(proj,ARCH_SUB_RATIOS,proj.catCosts.arch)[rowKey]||0;
+  if(rowKey==='arch_total')return proj.catCosts.arch;
+  // Elec sub-items
+  if(rowKey.startsWith('elec_')&&rowKey!=='elec_total')return getSubBreakdown(proj,ELEC_SUB_RATIOS,proj.catCosts.elec)[rowKey]||0;
+  if(rowKey==='elec_total')return proj.catCosts.elec;
+  // Mech sub-items (hvac+plumb+fire combined)
+  const mechTotal=(proj.catCosts.hvac||0)+(proj.catCosts.plumb||0)+(proj.catCosts.fire||0);
+  if(rowKey.startsWith('mech_')&&rowKey!=='mech_total')return getSubBreakdown(proj,MECH_SUB_RATIOS,mechTotal)[rowKey]||0;
+  if(rowKey==='mech_total')return mechTotal;
+  // Lift
+  if(rowKey==='lift_total')return proj.catCosts.lift||0;
+  return 0;
+}
+
+// Get estimate unit price for a row from sliders
+function getEstUP(rowKey){
+  if(!state)return null;
+  const area=state.area;if(!area)return null;
+  // Arch
+  if(rowKey.startsWith('arch_')&&rowKey!=='arch_total'){
+    const archUP=state.chosen.arch||0;if(!archUP)return null;
+    const sr=Object.values(ARCH_SUB_RATIOS).reduce((a,b)=>a+b,0);
+    return archUP*(ARCH_SUB_RATIOS[rowKey]||0)/sr;
+  }
+  if(rowKey==='arch_total')return state.chosen.arch||0;
+  // Elec
+  if(rowKey.startsWith('elec_')&&rowKey!=='elec_total'){
+    const elecUP=state.chosen.elec||0;if(!elecUP)return null;
+    const sr=Object.values(ELEC_SUB_RATIOS).reduce((a,b)=>a+b,0);
+    return elecUP*(ELEC_SUB_RATIOS[rowKey]||0)/sr;
+  }
+  if(rowKey==='elec_total')return state.chosen.elec||0;
+  // Mech (hvac+plumb+fire)
+  const mechUP=(state.chosen.hvac||0)+(state.chosen.plumb||0)+(state.chosen.fire||0);
+  if(rowKey.startsWith('mech_')&&rowKey!=='mech_total'){
+    const sr=Object.values(MECH_SUB_RATIOS).reduce((a,b)=>a+b,0);
+    return mechUP*(MECH_SUB_RATIOS[rowKey]||0)/sr;
+  }
+  if(rowKey==='mech_total')return mechUP;
+  // Lift
+  if(rowKey==='lift_total')return state.chosen.lift||0;
+  return 0;
+}
+function fmtK(v){return(v==null||isNaN(v))?'—':Math.round(v/1000).toLocaleString();}
+function fmtUP(v){return(v==null||isNaN(v))?'—':'¥'+Math.round(v).toLocaleString();}
+
+function populateCmpPicker(){
+  const sel=document.getElementById('cmpPicker');
+  sel.innerHTML=`<option value="">${t('cmp_picker_default')}</option>`;
+  DATA.forEach(p=>{
+    if(cmpSelected.includes(p.id))return;
+    const u=USE_NAME_MAP[currentLang][p.use]||p.use;
+    const s=STRUCT_NAME_MAP[currentLang][p.structure]||p.structure;
+    sel.innerHTML+=`<option value="${p.id}">${p.name} — ${u} / ${s} / ${p.area.toLocaleString()}㎡</option>`;
+  });
+}
+function getCmpPjName(){
+  const v=(document.getElementById('cmpPjName').value||'').trim();
+  return v||'○○PJ';
+}
+function renderCmpPills(){
+  const box=document.getElementById('cmpSelected');
+  box.innerHTML=cmpSelected.map(id=>{
+    const p=DATA.find(x=>x.id===id);if(!p)return'';
+    return `<span class="cmp-pill" data-id="${id}">${p.name}<button class="x" data-rm="${id}">✕</button></span>`;
+  }).join('')+`<span class="cmp-pill est">${getCmpPjName()}</span>`;
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{
+    cmpSelected=cmpSelected.filter(x=>x!==+b.dataset.rm);
+    populateCmpPicker();renderCmpPills();renderCompareTable();
+  });
+}
+
+// Get unit price (¥/㎡) for a row
+function renderCompareTable(){
+  const wrap=document.getElementById('cmpTableWrap');
+  if(!cmpSelected.length&&!state){wrap.innerHTML=`<div class="cmp-empty">${t('cmp_empty')}</div>`;return;}
+  const L=currentLang;
+  const projs=cmpSelected.map(id=>DATA.find(x=>x.id===id)).filter(Boolean);
+  const area=state?state.area:0;
+  const hasEst=state&&area>0;
+  const nProjs=projs.length;
+
+  const ucell=(v)=>`<td class="mono">${fmtUP(v)}</td>`;
+  const eupcell=(v)=>`<td class="col-est mono">${v!=null?fmtUP(v):'—'}</td>`;
+  const ecostcell=(v)=>`<td class="col-est-cost mono">${v!=null?fmtK(v):'—'}</td>`;
+
+  // --- Header row 1: group labels ---
+  let h='<table class="cmp-table" id="cmpTableEl"><thead>';
+  h+=`<tr class="hdr1">`;
+  h+=`<th rowspan="2" class="th-cat">${L==='ja'?'工事種別':'Work Type'}</th>`;
+  h+=`<th rowspan="2" class="th-item">${L==='ja'?'内訳科目':'Item'}</th>`;
+  projs.forEach(p=>{
+    h+=`<th class="th-proj">${p.name}</th>`;
+  });
+  h+=`<th colspan="2" class="th-proj col-est">${hasEst?getCmpPjName():'—'}</th>`;
+  h+=`</tr>`;
+
+  // --- Header row 2: sub-labels (㎡単価 / 費用) ---
+  h+=`<tr class="hdr2">`;
+  projs.forEach(p=>{
+    h+=`<th class="th-sub">${L==='ja'?'円/㎡':'¥/㎡'}<br><span class="th-area">${p.area.toLocaleString()}㎡</span></th>`;
+  });
+  h+=`<th class="th-sub col-est">${L==='ja'?'円/㎡':'¥/㎡'}${area?'<br><span class="th-area">'+area.toLocaleString()+'㎡</span>':''}</th>`;
+  h+=`<th class="th-sub col-est-cost">${L==='ja'?'費用(千円)':'Cost(¥K)'}</th>`;
+  h+=`</tr></thead><tbody>`;
+
+  // --- Group the breakdown rows ---
+  const groups=[
+    {key:'arch', ja:'建築工事',     en:'Architecture'},
+    {key:'elec', ja:'電気設備工事', en:'Electrical'},
+    {key:'mech', ja:'機械設備工事', en:'Mechanical'},
+    {key:'lift', ja:'昇降機設備工事',en:'Elevator'},
+  ];
+
+  groups.forEach(grp=>{
+    const grpRows=BREAKDOWN_ROWS.filter(r=>r.grp===grp.key&&r.sub);
+    const totalRow=BREAKDOWN_ROWS.find(r=>r.grp===grp.key&&r.isTotal);
+    const nSub=grpRows.length||1;
+
+    // Sub-item rows
+    grpRows.forEach((row,ri)=>{
+      h+=`<tr class="row-sub">`;
+      if(ri===0) h+=`<td class="td-cat" rowspan="${nSub}">${grp[L]}</td>`;
+      h+=`<td class="td-item">${row[L]}</td>`;
+      projs.forEach(p=>{ h+=ucell(getCellValue(p,row.key)/p.area); });
+      const eup=hasEst?getEstUP(row.key):null;
+      h+=eupcell(eup);
+      h+=ecostcell(eup!=null&&area?eup*area:null);
+      h+=`</tr>`;
+    });
+
+    // Total row (colspan=2)
+    if(totalRow){
+      h+=`<tr class="row-cat"><td colspan="2" class="td-total">${totalRow[L]}</td>`;
+      projs.forEach(p=>{ h+=ucell(getCellValue(p,totalRow.key)/p.area); });
+      const eup=hasEst?getEstUP(totalRow.key):null;
+      h+=eupcell(eup);
+      h+=ecostcell(eup!=null&&area?eup*area:null);
+      h+=`</tr>`;
+    }
+  });
+
+  // その他工事 (no sub-items, colspan=2)
+  const estOtherUP=hasEst?(state.chosen.other||0):null;
+  h+=`<tr class="row-cat"><td colspan="2" class="td-total">${L==='ja'?'その他工事':'Other Works'}</td>`;
+  projs.forEach(p=>{h+=ucell((p.catCosts.other||0)/p.area);});
+  h+=eupcell(estOtherUP);
+  h+=ecostcell(estOtherUP&&area?estOtherUP*area:null);
+  h+=`</tr>`;
+
+  // === Summary rows (all colspan=2) ===
+  const directUPof=p=>CATS.reduce((a,c)=>a+p.catCosts[c.key],0)/p.area;
+  const estDirectUP=hasEst?CATS.reduce((a,c)=>a+(state.chosen[c.key]||0),0):null;
+
+  const summaryRow=(label,cls,multProj,multEst)=>{
+    h+=`<tr class="${cls}"><td colspan="2" class="td-total">${label}</td>`;
+    projs.forEach(p=>{h+=ucell(directUPof(p)*multProj);});
+    h+=eupcell(estDirectUP?estDirectUP*multEst:null);
+    h+=ecostcell(estDirectUP&&area?estDirectUP*multEst*area:null);
+    h+=`</tr>`;
+  };
+
+  summaryRow(t('cmp_direct'),'row-subtotal',1,1);
+  summaryRow((L==='ja'?'共通仮設費':'Common Temporary')+' <span class="pct">5%</span>','row-sub',0.05,0.05);
+  summaryRow((L==='ja'?'現場管理費':'Site Management')+' <span class="pct">8%</span>','row-sub',0.08,0.08);
+  summaryRow((L==='ja'?'一般管理費等':'General Admin.')+' <span class="pct">7%</span>','row-sub',0.07,0.07);
+  summaryRow(L==='ja'?'工事価格':'Construction Price','row-subtotal',1.20,1.20);
+  summaryRow((L==='ja'?'消費税等相当額':'Consumption Tax')+' <span class="pct">10%</span>','row-sub',1.20*0.10,1.20*0.10);
+  summaryRow(L==='ja'?'工事費（税込）':'Total (incl. tax)','row-total',1.20*1.10,1.20*1.10);
+
+  h+='</tbody></table>';
+  wrap.innerHTML=h;
+}
+
+document.getElementById('cmpAddBtn').onclick=()=>{
+  const sel=document.getElementById('cmpPicker');
+  const id=parseInt(sel.value);if(isNaN(id))return;
+  cmpSelected.push(id);sel.value='';
+  populateCmpPicker();renderCmpPills();renderCompareTable();
+};
+document.getElementById('cmpPjName').addEventListener('input',()=>{renderCmpPills();renderCompareTable();});
+
+//================= エクスポート =================
+function getCmpTableData(){
+  const L=currentLang;
+  const projs=cmpSelected.map(id=>DATA.find(x=>x.id===id)).filter(Boolean);
+  const area=state?state.area:0;
+  const hasEst=state&&area>0;
+  const estDirectUP=hasEst?CATS.reduce((a,c)=>a+(state.chosen[c.key]||0),0):null;
+  const header=[t('cmp_row_item')];
+  projs.forEach(p=>{
+    const u=USE_NAME_MAP[L][p.use]||p.use,s=STRUCT_NAME_MAP[L][p.structure]||p.structure;
+    header.push(`${p.name} (${u}/${s} ${p.area.toLocaleString()}㎡) 円/㎡`);
+  });
+  const pjn=getCmpPjName();
+  header.push(`${pjn} 円/㎡`);
+  header.push(`${pjn} ${L==='ja'?'費用（千円）':'Cost(¥K)'}`);
+  const rows=[header];
+  BREAKDOWN_ROWS.forEach(row=>{
+    const r=[row[L]];
+    projs.forEach(p=>{r.push(Math.round(getCellValue(p,row.key)/p.area));});
+    const eup=hasEst?getEstUP(row.key):null;
+    r.push(eup!=null?Math.round(eup):'');
+    r.push(eup!=null&&area?Math.round(eup*area/1000):'');
+    rows.push(r);
+  });
+  // Other
+  {const r=[L==='ja'?'その他工事':'Other Works'];
+   projs.forEach(p=>{r.push(Math.round((p.catCosts.other||0)/p.area));});
+   const eo=hasEst?(state.chosen.other||0):null;
+   r.push(eo?Math.round(eo):'');r.push(eo&&area?Math.round(eo*area/1000):'');rows.push(r);}
+  const directUPof=p=>CATS.reduce((a,c)=>a+p.catCosts[c.key],0)/p.area;
+  const summaryRows=[
+    {label:t('cmp_direct'),mult:1},
+    {label:L==='ja'?'共通仮設費 5%':'Common Temporary 5%',mult:0.05},
+    {label:L==='ja'?'現場管理費 8%':'Site Management 8%',mult:0.08},
+    {label:L==='ja'?'一般管理費等 7%':'General Admin. 7%',mult:0.07},
+    {label:L==='ja'?'工事価格':'Construction Price',mult:1.20},
+    {label:L==='ja'?'消費税等 10%':'Consumption Tax 10%',mult:1.20*0.10},
+    {label:L==='ja'?'工事費（税込）':'Total (incl. tax)',mult:1.20*1.10},
+  ];
+  summaryRows.forEach(sr=>{
+    const r=[sr.label];
+    projs.forEach(p=>{r.push(Math.round(directUPof(p)*(sr.mult===1?1:sr.mult)));});
+    const ev=estDirectUP?(sr.mult===1?estDirectUP:estDirectUP*sr.mult):null;
+    r.push(ev?Math.round(ev):'');r.push(ev&&area?Math.round(ev*area/1000):'');rows.push(r);
+  });
+  return rows;
+}
+
+// Excel export using SheetJS-style CSV (pure CSV, opens in Excel)
+document.getElementById('cmpExportXlsx').onclick=()=>{
+  const data=getCmpTableData();
+  const csv=data.map(row=>row.map(cell=>{
+    const s=String(cell);
+    return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(',')).join('\r\n');
+  const bom='\uFEFF';
+  const blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(currentLang==='ja'?'概算比較表':'estimate_comparison')+'.csv';
+  a.click();
+};
+
+// PDF export using browser print
+document.getElementById('cmpExportPdf').onclick=()=>{
+  const table=document.getElementById('cmpTableEl');
+  if(!table){alert(currentLang==='ja'?'比較表にデータがありません':'No data in comparison table');return;}
+  const L=currentLang;
+  const area=state?state.area:0;
+
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${L==='ja'?'概算内訳 比較表':'Estimate Breakdown Comparison'}</title>
+<style>
+@page{size:landscape;margin:12mm}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;font-size:11px;color:#222;margin:20px}
+h1{font-size:16px;margin:0 0 4px}
+.meta{font-size:11px;color:#666;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:10px}
+th,td{padding:5px 8px;border:1px solid #ccc;text-align:right}
+th{background:#f0f3f7;font-weight:700;text-align:center}
+td:first-child,th:first-child{text-align:left}
+.row-cat td{background:#f0f3f7;font-weight:700}
+.row-sub td:first-child{padding-left:20px}
+.row-subtotal td{border-top:2px solid #999;font-weight:700}
+.row-total td{background:#e7f0fb;font-weight:700;border-top:2px solid #1668c4;font-size:11px}
+.col-est{background:#fffdf3 !important}
+.col-est-cost{background:#fff8e6 !important}
+@media print{body{margin:0}button{display:none}}
+</style></head><body>
+<h1>${L==='ja'?'概算内訳 比較表':'Estimate Breakdown Comparison'}</h1>
+<div class="meta">${L==='ja'?'施工床面積':'Floor area'}: ${area?area.toLocaleString()+'㎡':'—'} ｜ ${new Date().toLocaleDateString()}</div>
+${table.outerHTML}
+<br><button onclick="window.print();setTimeout(()=>window.close(),500)" style="padding:10px 24px;font-size:14px;cursor:pointer">
+${L==='ja'?'PDFとして印刷 / 保存':'Print / Save as PDF'}</button>
+</body></html>`);
+  win.document.close();
+};
+
+populateCmpPicker();renderCmpPills();renderCompareTable();
+
+//================= 初回検索 =================
+search();
+</script>
+</body>
+</html>
